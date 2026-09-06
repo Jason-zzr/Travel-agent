@@ -1,0 +1,988 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<productRequirementsDocument id="intelligent-travel-agent-prd" version="1.0.0" language="zh-CN">
+  <metadata>
+    <title>Travel-native Agent Harness 产品需求文档（可实施精简版）</title>
+    <shortTitle>Travel Harness PRD v1.0</shortTitle>
+    <documentType>Product Requirements Document / Build Spec</documentType>
+    <createdDate>2026-08-20</createdDate>
+    <lastUpdatedDate>2026-08-21</lastUpdatedDate>
+    <status>M0 七日实施基线已确认，等待开工</status>
+    <owner>用户</owner>
+    <supersedes>intelligent-travel-agent-prd-v0.7.xml</supersedes>
+    <predecessorRole>v0.7 仍是需求语义的权威档案。本版本不删除 v0.7 的任何已确认语义，只做三件事：把 v0.7 拆成 M0/M1/M2 三级实施层、把不可实施的数据获取方案替换为 MCP 数据层、把 M0 压缩为一个 7 天可交付的单场景包络。凡本版本未展开而标注 seeV07 的契约，以 v0.7 同 ID 节点为准。</predecessorRole>
+    <scopeStatement>产品定义不变：面向国内家庭游主规划者、以本地 Windows Electron App 交付的 Travel-native Agent Harness，底层保留 Cordis 风格服务与事件驱动、append-only SessionEvent、Provider 抽象、只读 Subagent、EvidenceClaim 与 Verification Gate。本版本的唯一新增判断是：v0.7 的第三方平台只读抓取（12306/携程/飞猪/美团/小红书/抖音/B站的自建 SourceAdapter 与五小时浏览器登录态）在个人开发者的 7 天窗口内不可实现，且伴随反爬与合规风险，因此 M0 全部改由外部 MCP Server 与官方 Web 服务提供真实数据。所有第三方能力仍严格只读；填写、提交、领取、占座、下单、支付、取消、改签与退款始终由用户在外部平台完成。</scopeStatement>
+  </metadata>
+
+  <continuationContext>
+    <purpose>用于在新对话中恢复实施上下文并继续开发。</purpose>
+    <instructionsForNextConversation>
+      <instruction order="1">读取本 XML 全文。status="confirmed" 视为已确认，status="proposed" 需要用户拍板后才能实施。</instruction>
+      <instruction order="2">只实现 tier="M0" 的内容。tier="M1"/"M2" 只允许预留类型与接口，不允许写实现。</instruction>
+      <instruction order="3">遇到 seeV07="ID" 时，去 intelligent-travel-agent-prd-v0.7.xml 读取同 ID 节点获取完整契约，不要凭空重新设计。</instruction>
+      <instruction order="4">动工前先读 cordisContract 与 mcpDataLayer 两节；这两节是最容易被模型幻觉的地方。</instruction>
+      <instruction order="5">每完成一天，更新 sevenDayBuildPlan 中对应 day 的 completionState 与 changeLog。</instruction>
+    </instructionsForNextConversation>
+    <nextWorkItem ref="NEXT-010" status="open">
+      <name>确认 M0-ENVELOPE 与 D1 技术选型，开始 Day 1</name>
+    </nextWorkItem>
+    <suggestedResumePrompt>请读取 intelligent-travel-agent-prd-v1.0.xml，只实现 tier="M0" 的内容，严格遵守 cordisContract 与 mcpDataLayer；从 sevenDayBuildPlan 中 completionState="not_started" 的最早一天继续。不要恢复自建平台爬虫、专用浏览器登录态、多 Provider fallback chain、第二模型复核或旅行中持续监控。</suggestedResumePrompt>
+  </continuationContext>
+
+  <realityCheck status="confirmed">
+    <purpose>记录 v0.7 到 v1.0 的核心判断依据，防止后续对话把已砍掉的东西重新加回来。</purpose>
+    <finding id="RC-001" severity="blocking">
+      <observation>v0.7 要求为 12306、携程、飞猪、美团/大众点评、小红书、抖音、B站自建签名 SourceAdapter，并配合五小时专用浏览器登录态。</observation>
+      <assessment>这些平台均部署了 JS 挑战、行为风控、登录墙与验证码。单个平台做到稳定只读需要数周并持续维护，七个平台在 7 天内不可能完成，且自动化访问违反多数平台服务条款。这是 v0.7 唯一的致命阻塞项，而非难度问题。</assessment>
+      <resolution>M0 删除全部自建爬虫与浏览器登录态。改由外部 MCP Server 提供真实数据，见 mcpDataLayer。SourceAdapter 抽象保留，实现体从"平台爬虫"换成"MCP 客户端包装"。</resolution>
+    </finding>
+    <finding id="RC-002" severity="high">
+      <observation>v0.7 的 FR-501F 要求按住宿实体、RoomType、RatePlan 三级完成携程/飞猪/美团/抖音跨平台去重与匹配。</observation>
+      <assessment>跨 OTA 同酒店同房型匹配是行业级难题，需要长期积累的实体库与人工校准；且 M0 只接得到单一供应链数据源，没有第二个平台可供匹配。</assessment>
+      <resolution>M0 删除跨平台匹配。住宿只做单一真实库存源的房型/费用/取消政策核验，比较维度从"跨平台同房型比价"改为"同一数据源内的多候选可比较总成本"。跨平台匹配整体推迟到 M2，届时需要单独立项。</resolution>
+    </finding>
+    <finding id="RC-003" severity="medium">
+      <observation>v0.7 要求多 Provider 角色绑定、fallback chain、成本硬上限、Schema 修复回退与高影响第二模型复核。</observation>
+      <assessment>路由与治理层本身可实现，但它是纯基础设施投入，对"能不能规划出一趟真实旅行"零贡献。在 7 天窗口里投入产出比最低。</assessment>
+      <resolution>M0 只做单 Provider + 手动切换 + 成本累计展示 + 一次 Schema 受约束修复。ProviderRoutingPolicy 与 ModelCallRecord 的字段结构完整保留，M1 补齐路由逻辑即可，不需要改数据模型。</resolution>
+    </finding>
+    <finding id="RC-004" severity="medium">
+      <observation>v0.7 要求 DPAPI 绑定的数据密钥加密与 Windows Credential Manager 凭据存储。</observation>
+      <assessment>目标正确，但自建 DPAPI 原生模块在 Electron 下需要处理 node-gyp 与 ABI 兼容，是典型的时间黑洞。</assessment>
+      <resolution>改用 Electron 内置 safeStorage。它在 Windows 上底层即 DPAPI，绑定当前系统用户，安全属性与 v0.7 的要求等价，但只需数十行代码。NFR-017 相应改写而非降级。</resolution>
+    </finding>
+    <finding id="RC-005" severity="high">
+      <observation>v0.7 的 R0 覆盖全国、任意人员结构、多目的地、自驾、异地会合、换酒店日与城际移动日。</observation>
+      <assessment>这些分支的组合复杂度集中在 FR-409 与 FR-502，是行程规划中最难写对的部分。全支持会让 7 天里没有一天能真正跑通端到端。</assessment>
+      <resolution>M0 锁定单场景包络，见 m0ScenarioEnvelope。被排除的分支不删除需求，只标 tier="M1"。</resolution>
+    </finding>
+    <finding id="RC-006" severity="info">
+      <observation>7 天完成 M0 的前提是每天有效工作时间充足，且 D1 的内核与 D3 的 MCP 接入不出意外。</observation>
+      <assessment>这是一个紧但可信的计划，不是一个宽裕的计划。最可能滑坡的是 D3（外部 MCP Server 的真实可用性与返回结构）与 D6（时间轴编译的边界条件）。</assessment>
+      <resolution>D3 的前置探针任务必须在 Day 1 就跑一次，见 BUILD-D1 的 probe 项。若落后，按 descopeOrder 逐条砍，不要平摊延期。</resolution>
+    </finding>
+  </realityCheck>
+
+  <m0ScenarioEnvelope id="M0-ENVELOPE" status="proposed">
+    <purpose>M0 只保证这一个场景包络内的正确性。包络外的输入不静默降质，而是显式指出超出维度并出具方案对比，由用户决定如何处理，见 envelopeGuardRule 与 ENV-SPLIT。这是 7 天可交付的最关键前提；如与你的首次真实使用场景不符，只需修改本节，其余章节不受影响。</purpose>
+    <included>
+      <item name="origin">单一出发城市，全体成员同城出发。</item>
+      <item name="destination">单一国内目的地城市及其近郊，不跨城多目的地。</item>
+      <item name="duration">3 至 6 个日历日。</item>
+      <item name="travelers">2 至 6 人，可包含 0 至 2 位老人与 0 至 2 位儿童。</item>
+      <item name="intercityTransport">高铁与普通列车，或国内航班；往返各一段。</item>
+      <item name="accommodation">整趟旅行 1 个 Stay Segment，不换酒店。</item>
+      <item name="localTransport">步行、公共交通与出租/网约车，按日混合。</item>
+      <item name="dayTypes">ARRIVAL_DAY、NORMAL_DAY、DEPARTURE_DAY 三种。</item>
+    </included>
+    <excludedToM1>
+      <handlingNote>以下能力 M0 不实现。用户行程涉及其中任一项时，按 envelopeGuardRule 出具对比，多数情况下 ENV-SPLIT 拆会话是可行替代，衔接段由用户承担。</handlingNote>
+      <item ref="FR-404">多人异地出发与会合优化。可拆会话规避：各出发地各自一个会话。</item>
+      <item ref="FR-401">自驾与租车条件核验。不可拆会话规避，只能缩小包络或用户自行处理。</item>
+      <item ref="FR-515" splitViable="true">HOTEL_CHANGE_DAY 与 INTERCITY_TRANSFER_DAY。拆会话后转化为各子会话的 DEPARTURE_DAY 与 ARRIVAL_DAY。</item>
+      <item ref="FR-511" splitViable="true">多个 Stay Segment 与换住宿收益成本判断。拆会话后每个子会话恒为单 Stay Segment。</item>
+      <item>红眼航班、凌晨抵达、提前一晚订房的特殊住宿夜归属。</item>
+      <item>长途汽车、轮船与多模式组合交通。</item>
+    </excludedToM1>
+    <envelopeGuardRule status="confirmed" resolves="OQ-019">超出包络时不硬性拒绝，改为出具方案对比并由用户决定。规则如下。
+      <rule id="ENV-a">Agent 必须在基础信息确认卡片（FR-105）阶段显式指出输入的哪一个维度超出包络，以及超出的具体表现。禁止含糊带过，也禁止假装支持后输出错误结果。</rule>
+      <rule id="ENV-b">随后输出一张包络外处理方案对比卡片，逐项列出可选方案及其代价，至少包含拆会话与缩小到包络内两种，必要时含终止。系统只做对比，不代替用户选择。</rule>
+      <rule id="ENV-c">对比必须覆盖四个维度：能拿到什么、拿不到什么、需要用户手工承担什么、以及规划质量上的实际差异。禁止只列方案名而不讲代价。</rule>
+      <rule id="ENV-d">用户选择后写入 DecisionLog，记录所选方案、被放弃的方案与选择理由，使后续会话能理解当前行程为何是这个形态。</rule>
+    </envelopeGuardRule>
+    <splitSessionStrategy id="ENV-SPLIT" status="confirmed" tier="M0">
+      <purpose>把超包络行程降解为多个包络内行程，而不是扩大包络。这是 M0 应对多目的地与换酒店的首选方案，成本远低于实现 HOTEL_CHANGE_DAY 与 INTERCITY_TRANSFER_DAY 分支。</purpose>
+      <mechanism>为每一段创建一个独立会话，各自完整走 STAGE-1 至 STAGE-5，各自在包络内。多个会话通过 linkedSessionGroup 关联，可在 UI 中并列查看。</mechanism>
+      <userBurden>段与段之间的城际交通、换酒店与行李衔接由用户自行承担。系统必须在拆分时就把这份负担明确写出来，并在每个子会话的首末日标注衔接点，不得让用户到最后才发现中间是断的。</userBurden>
+      <comparisonRequirement>拆会话方案与缩小包络方案必须一并呈现给用户比较。典型代价对照是：拆会话能覆盖完整行程但衔接段无优化且无法做跨段联合权衡；缩小包络能获得完整的端到端优化但会舍弃部分目的地。</comparisonRequirement>
+      <m0Limit>M0 只做会话关联与并列查看，不做跨会话的联合优化、跨段预算汇总或统一时间轴。这三项属 M1。</m0Limit>
+    </splitSessionStrategy>
+  </m0ScenarioEnvelope>
+
+  <implementationTiers status="confirmed">
+    <tier code="M0" name="七日单场景 MVP">本次 7 天必须交付。端到端跑通 M0-ENVELOPE 内的一次真实旅行规划。</tier>
+    <tier code="M1" name="包络扩展与治理补齐">解除场景限制、补齐 Provider 路由与成本治理、旅行日助手与局部重排、离线与可访问性。</tier>
+    <tier code="M2" name="需重新立项">跨平台比价匹配、专用浏览器登录态、旅行中持续监控、境外旅行、移动端与云同步。每项均需独立的安全与合规评审。</tier>
+    <tierRule>M0 阶段允许为 M1/M2 预留枚举值、数据库列与接口签名，但禁止编写其实现分支。预留必须是"字段存在但恒为默认值"，不能是"半实现"。</tierRule>
+  </implementationTiers>
+
+  <executiveSummary status="confirmed">
+    <productDefinition>一个专门为旅行决策开发的 Harness，以独立 Windows Electron App 交付。产品服务准备国内家庭游的主规划者，从模糊想法出发，通过渐进式访谈、只读数据获取、证据验证、交通住宿行程联合优化、版本化时间轴和 PreparationTask，形成可执行、可验证、可解释的完整行程。</productDefinition>
+    <coreValue>用户不再需要在多个平台之间手工搜集、辨别推广与真实体验、交叉验证实时事实并自行拼接不绕路的交通住宿行程。系统把搜索、官方地图服务与真实库存数据统一为带来源、时效、证据等级与冲突状态的事实，再据此联合生成一份综合最优方案和少量高影响备选。</coreValue>
+    <recommendedProductShape status="confirmed">采用"Travel Harness 内核 + Coordinator + 只读 Source Subagent + 专业 Travel Skills + SourceAdapter + Verification Gate + Travel UI"的组合架构。Harness 负责会话、事件、权限、路由、成本、恢复和审计；Agent 负责研究、验证、规划与解释；用户保留所有最终决策和外部操作。相对 v0.7 的唯一实现差异是 SourceAdapter 的实现体由自建平台爬虫改为 MCP 客户端包装。</recommendedProductShape>
+  </executiveSummary>
+
+  <problemDefinition status="confirmed" seeV07="problemDefinition">
+    <primaryProblem>用户在旅行前需要同时处理人员、时间、目的地、攻略、交通、住宿、预算、旺季和路线等大量相互依赖的信息，难以全面规划并做出适合全体成员的选择。</primaryProblem>
+    <painPointsRef>PP-001 至 PP-006 完整定义见 v0.7，本版本不做修改。</painPointsRef>
+  </problemDefinition>
+
+  <productGoals>
+    <goal id="G-001" priority="P0" tier="M0" status="confirmed">从模糊想法出发，通过渐进式提问快速形成完整、结构化的国内家庭游需求状态。</goal>
+    <goal id="G-002" priority="P0" tier="M0" status="confirmed">优先满足硬性约束，再在预算、体验、舒适度和群体满意度之间优化。</goal>
+    <goal id="G-003" priority="P0" tier="M0" status="confirmed">将多来源信息转化为去重、可追溯、带可信度的结构化情报。</goal>
+    <goal id="G-004" priority="P0" tier="M0" status="confirmed">输出针对当前同行成员的目的地、交通和住宿决策理由。</goal>
+    <goal id="G-005" priority="P1" tier="M1" status="confirmed">在五分钟内形成可评审骨架，在二十分钟内形成首份完整方案或明确的阻塞报告。M0 只要求单次规划总时长可被观测和展示，不承诺具体阈值。</goal>
+    <goal id="G-006" priority="P0" tier="M0" status="confirmed">生成一份综合最优完整方案，在交通和住宿等高影响节点提供一至两个有实质差异的备选，并为每天保留 Flexible/Backup。</goal>
+    <goal id="G-007" priority="P0" tier="M0" status="confirmed">让关键事实通过 Verification Gate；硬锚点已验证或明确未知，静默硬冲突、虚构来源和错误记录用户确认的事件数为零。</goal>
+    <goal id="G-008" priority="P0" tier="M0" status="confirmed">在用户主动请求调整后仅重算受影响范围；候选不自动应用，用户确认后才通过新版本、当前时间轴与 DecisionLog 原子写回。</goal>
+    <goal id="G-009" priority="P2" tier="M1" status="planned">在用户明确选择"保存为长期偏好"后沉淀可复用家庭偏好；旅行后复盘作为后续能力。</goal>
+  </productGoals>
+
+  <nonGoals status="confirmed">
+    <item tier="M0">M0 不支持境外旅行、签证、入境、海关与跨境证件规则。</item>
+    <item tier="M0">M0 不替用户填写旅客信息、提交表单、领取优惠、占座、下单、支付、取消、改签或退款；所有外部平台与 MCP 工具仅用于数据获取。</item>
+    <item tier="M0">M0 不建设账户体系、云端同步、远程访问、多租户、成员独立登录、邀请、投票或多人共同编辑。</item>
+    <item tier="M0">M0 不内置 Codex 或其他 Coding Agent，不把产品交付为 ChatGPT/Codex Skill。</item>
+    <item tier="M0">M0 不自建任何平台爬虫，不使用用户浏览器登录态，不绕过登录墙、验证码或反爬机制。</item>
+    <item tier="M0">M0 不提供持续后台服务、App 退出后的实时监控、旅行中主动推送或持续定位。</item>
+    <item tier="M0">M0 不做跨 OTA 的同酒店同房型比价匹配。</item>
+    <item>系统不提供医疗诊断，仅将用户主动提供的功能性限制用于旅行适配。</item>
+    <item>系统不以内容数量作为质量指标，不简单拼接攻略，也不生成通用衣物、行李、洗衣、共享物品或购物清单。</item>
+    <item>禁止上传或保存身份证、护照等证件原件、照片、完整号码、MRZ 或生物识别信息。</item>
+  </nonGoals>
+
+  <targetUsers status="confirmed" seeV07="targetUsers">
+    <primarySegment id="U-001">国内家庭游主规划者，C 端个人用户，代表家庭创建和维护旅行计划。</primarySegment>
+    <companionModel id="U-002">同行人仅作为年龄、关系、体力、照护、偏好和约束的数据对象，不拥有独立账号、登录、投票或编辑权限。</companionModel>
+  </targetUsers>
+
+  <productPrinciples status="confirmed">
+    <principle id="PR-001">一次只询问一个主要决策问题，使用快捷选项加自由输入，避免长表单轰炸。</principle>
+    <principle id="PR-002">不重复询问已经获得的信息；仅在缺失、冲突或高影响条件下追问。</principle>
+    <principle id="PR-003">先记录用户意向，再进行可行性判断；不要在信息不足时过早否定。</principle>
+    <principle id="PR-004">区分硬性约束、柔性偏好和可协商变量。</principle>
+    <principle id="PR-005">每个推荐都要解释适用原因、代价、风险和数据来源。</principle>
+    <principle id="PR-006">涉及营业、价格、票务、交通、天气和法规的事实必须带查询时间并优先验证最新官方信息。</principle>
+    <principle id="PR-007">用户可随时确认、修改、跳过或撤销某个条件，系统只重算受影响部分。</principle>
+    <principle id="PR-008">Agent 负责检索、验证、比较、分析、规划和给出建议；用户保留最终选择、确认、购买、预约和支付决定。未经用户明确授权不得替用户完成不可逆动作。</principle>
+    <principle id="PR-009">所有会影响行程可执行性的动态数据在进入推荐或最终时间轴前必须经过 Verification Gate；已验证事实、交叉印证体验、估计值与未验证信息必须明确区分。</principle>
+    <principle id="PR-010" status="confirmed" tier="M0">能力边界必须显式，且以对比而非拒绝的方式呈现。超出 M0-ENVELOPE、数据源不可用或证据不足时，系统的责任是讲清楚边界在哪、有哪些处理方案、每种方案的代价是什么，然后把选择权交给用户；禁止用模型常识补造事实，也禁止在未告知的情况下降质输出。单纯的拒绝只在确实无任何可行方案时才使用。</principle>
+  </productPrinciples>
+
+  <lifecycle status="confirmed">
+    <phase id="LIFE-1" name="旅行前" tier="M0">
+      <capability>成员与时间协调</capability>
+      <capability>目的地情报研究与可信度核验</capability>
+      <capability>交通、半日级行程骨架、餐饮区域锚点与住宿夜数联合决策</capability>
+      <capability>具体住宿、房型与预订风险判断</capability>
+      <capability>每日路线精排、具体餐饮、预约、购票和出行准备</capability>
+      <capability>按负责人、截止时间和 recheckAt 管理预约、票务与出发前 Readiness</capability>
+    </phase>
+    <phase id="LIFE-2" name="旅行中" tier="M1" seeV07="LIFE-2">当日行程助手、有限动态监控与局部重排。契约已在 v0.7 的 FR-601/602/603 确认，M0 不实现。</phase>
+    <phase id="LIFE-3" name="旅行后" tier="M2" seeV07="LIFE-3">费用结算、旅行复盘与长期偏好记忆。</phase>
+  </lifecycle>
+
+  <endToEndFlow status="confirmed">
+    <step order="1" ref="STAGE-1" tier="M0">出发地点 → 目的地区范围 → 出游人员 → 出游时间 → 包络校验 → 基础信息确认</step>
+    <step order="2" ref="STAGE-2" tier="M0">旅行目标与偏好 → 预算 → 目的地筛选条件 → 候选目的地 → 用户确认</step>
+    <step order="3" ref="STAGE-3" tier="M0">补充已有线索 → 多来源研究 → 提取去重 → 可信度验证 → 用户适配 → 景点/餐饮线索确认</step>
+    <step order="4" ref="STAGE-4" tier="M0">交通约束 → 往返交通 → 当地交通策略 → 景点粗粒度空间聚类 → 上午/下午/晚间 Day Skeleton → 餐饮区域锚点 → Stay Segment</step>
+    <step order="5" ref="STAGE-5" tier="M0">具体住宿与房型 → 住宿 Verification Gate → 每日景点路线精排 → 具体餐厅 → 最终 Verification Gate → 完整时间轴 → 预约/票务任务 → 用户外部办理与结果回填 → 出发前 Readiness Gate</step>
+    <step order="6" tier="M1" seeV07="STAGE-6">旅行中执行、动态验证与局部重排。</step>
+    <step order="7" tier="M2" seeV07="STAGE-7">费用结算 → 旅行复盘 → 长期记忆。</step>
+  </endToEndFlow>
+
+  <productPlatformAndHarness>
+    <productShape id="PS-001" status="confirmed" tier="M0">
+      <decision>产品以独立本地桌面应用交付，面向 Windows 10 22H2 及以上与 Windows 11 64 位，使用 Electron 打包。所有数据默认保存在本机，不依赖云端账户。</decision>
+      <rationale>旅行规划涉及家庭成员信息与个人偏好，本地优先能在隐私上给出最强承诺；同时避免为个人项目引入服务端运维。</rationale>
+    </productShape>
+
+    <architecture id="ARCH-001" status="confirmed" tier="M0">
+      <decision>采用 Cordis 风格的服务容器与事件驱动运行时作为 Harness 内核。所有能力以服务插件形式注册到根 Context，通过依赖注入互相获取，通过事件总线解耦通信，并利用作用域实现插件级生命周期与资源回收。</decision>
+      <preservationNote>本决策在 v1.0 中零改动。7 天窗口不构成放弃该架构的理由：Cordis 内核本身在 D1 一天内可以搭起来，真正的成本在于其上的业务服务数量，而那已由 tier 分级控制。</preservationNote>
+      <kernelServices>
+        <service name="SessionService" tier="M0">会话生命周期、当前阶段、恢复点。</service>
+        <service name="EventLogService" tier="M0">append-only 事件写入、读取、重放与快照。</service>
+        <service name="ProviderRuntime" tier="M0">Provider 注册、凭据读取、模型调用、用量与成本记账。M0 单 Provider。</service>
+        <service name="PolicyService" tier="M0">权限判定、只读工具白名单、不可逆动作拦截。</service>
+        <service name="ToolRegistry" tier="M0">工具注册、参数校验、调用审计、MCP 客户端接入点。</service>
+        <service name="Coordinator" tier="M0">阶段推进、Subagent 派发、结果归并。</service>
+        <service name="TravelStateService" tier="M0">TravelState 派生、读模型缓存、版本化写回。</service>
+        <service name="InspectorService" tier="M0">事件、工具调用、模型调用与证据的可视化审计面板。</service>
+      </kernelServices>
+      <serviceRule>八个内核服务在 M0 全部必须存在。允许某个服务内部只实现最小逻辑（例如 PolicyService 在 M0 只判定 AUTO_READ 与 HARD_CONFIRM 两档），但不允许缺席，否则后续补齐会退化为重构。</serviceRule>
+    </architecture>
+
+    <harnessKernel id="HK-001" status="confirmed" tier="M0">
+      <decision>Harness 内核由会话与阶段管理、append-only 事件日志、Provider 抽象、工具注册与权限、Subagent 编排、成本与用量记账、失败恢复、可观测审计八项组成。</decision>
+      <eventSourcingRule>SessionEvent 追加日志是唯一权威事实源，任何派生状态必须能够由事件重建，禁止让派生状态成为不可追溯的第二事实源。</eventSourcingRule>
+      <m0Scope>M0 必须实现事件追加、按 sessionId 顺序读取、从事件重建 TravelState、以及定期快照。事件重放的 UI 可视化属于 descopeOrder 第 5 项，可砍。</m0Scope>
+    </harnessKernel>
+
+    <providerRouting id="ROUTER-001" status="confirmed">
+      <decision>系统采用 BYOK 模式，支持 OpenAI、DeepSeek 与 Gemini 兼容接口，定义 EXTRACTION、PLANNING、REVIEW、VISION 四个模型角色。</decision>
+      <m0Implementation tier="M0">M0 只要求：可在设置中配置一个 Provider 的 baseUrl、apiKey 与模型名；四个角色可以分别选择模型名但允许全部相同；每次调用写入 ModelCallRecord；界面展示当前会话累计 token 与估算成本。</m0Implementation>
+      <m1Implementation tier="M1">fallback chain、角色级自动路由、每趟旅行成本硬上限与超限阻断、高影响决策的第二模型复核。字段与表结构在 M0 即按最终形态建好，M1 只补逻辑。</m1Implementation>
+      <schemaRepairRule tier="M0">结构化输出必须用 Zod 校验。校验失败时允许一次带错误信息的受约束修复重试；再次失败则标记该结果 BLOCKED 并向用户显示原因，禁止使用未校验通过的输出。</schemaRepairRule>
+    </providerRouting>
+
+    <agentOrchestration id="AO-001" status="confirmed" tier="M0">
+      <decision>采用 Coordinator 加只读 Source Subagent 的编排模型。</decision>
+      <role name="COORDINATOR">维护阶段、拆解任务、派发 Subagent、归并结果、与用户交互。唯一可以修改 TravelState 的角色。</role>
+      <role name="SOURCE_SUBAGENT">最小权限只读。只能调用被授权的只读工具，只能向会话追加 EvidenceClaim，不得修改 TravelState，不得调用写操作工具。</role>
+      <role name="VERIFIER">执行 Verification Gate 判定，产出 verificationStatus 与冲突记录。</role>
+      <role name="PLANNER">在已验证事实之上生成骨架、路线与时间轴候选。</role>
+      <role name="REVIEWER" tier="M1">对高影响输出做第二轮复核。M0 不实现。</role>
+      <isolationRule>Subagent 之间不共享上下文，只通过 EvidenceClaim 与 Coordinator 通信，避免污染与提示注入横向扩散。</isolationRule>
+    </agentOrchestration>
+
+    <permissionModel id="PERM-001" status="confirmed">
+      <tier name="AUTO_READ" tier="M0">只读数据获取，无副作用，自动执行并记录审计。M0 的全部 MCP 工具与搜索均属此档。</tier>
+      <tier name="SESSION_APPROVAL" tier="M1">会话级一次授权后在有效期内免重复确认。M0 无适用场景，因为不存在登录态与账号操作，故不实现。</tier>
+      <tier name="HARD_CONFIRM" tier="M0">涉及不可逆或外部后果的动作。系统永不执行，只生成交接说明并引导用户到外部平台自行完成。</tier>
+      <irreversibleActionRule status="confirmed">购买、支付、下单、占座、提交订单、正式预约、取消、改签与退款一律不由系统执行。即便某个外部 MCP Server 提供了此类工具，也必须在 ToolRegistry 白名单层被拒绝注册，见 MCP-ALLOWLIST。</irreversibleActionRule>
+    </permissionModel>
+
+    <dataLayer id="DATA-001" status="confirmed" tier="M0">
+      <decision>本地采用 SQLite 加 JSONL 事件日志。SQLite 用于结构化查询与读模型，JSONL 用于 append-only 事实源。</decision>
+      <implementation>better-sqlite3 同步 API，配合 WAL 模式。事件先落 JSONL 并 fsync，再更新 SQLite 读模型；两者不一致时以 JSONL 为准并支持从 JSONL 重建 SQLite。</implementation>
+      <supersededPillar>v0.7 的 BROWSER-001 专用旅行浏览器工作区在 v1.0 中整体删除，其职责由 mcpDataLayer 承接。相关的五小时登录态、按域授权、Cookie 隔离、截图脱敏与签名适配器包在 M0 均不适用。</supersededPillar>
+    </dataLayer>
+
+    <verificationLayer id="VERIFY-001" status="confirmed" tier="M0">
+      <decision>所有影响可执行性的动态事实必须经 Verification Gate 才能进入推荐或最终时间轴，产出 EvidenceClaim 并标注 verificationStatus。</decision>
+      <detail seeV07="VERIFY-001">完整判定矩阵与来源权重见 v0.7；本版本在 informationGovernance 中给出 M0 必须实现的最小子集。</detail>
+    </verificationLayer>
+
+    <knowledgePack id="KNOWLEDGE-001" status="planned" tier="M1">
+      <decision>目的地静态知识包用于降低重复检索成本。M0 不实现，全部知识实时获取。</decision>
+    </knowledgePack>
+
+    <userExperience id="UX-001" status="confirmed" tier="M0">
+      <decision>界面采用左侧对话、中部行程工作区、右侧证据与任务面板的三栏布局。对话负责推进，工作区负责结构化编辑与确认，右栏负责来源、时效与待办。</decision>
+      <m0Views>
+        <view name="CHAT">主对话与确认卡片。</view>
+        <view name="SKELETON">半日级 Day Skeleton 表格视图。</view>
+        <view name="TIMELINE">最终时间轴，按日分栏，显示项目类别与锚点等级。</view>
+        <view name="EVIDENCE">EvidenceClaim 列表，可按 verificationStatus 与 contentIdentity 过滤。</view>
+        <view name="TASKS">PreparationTask 与 ReservationTicketTask 任务中心。</view>
+        <view name="INSPECTOR">事件、工具调用与模型调用审计。</view>
+        <view name="SETTINGS">Provider 配置、MCP Server 配置与连通性检查。</view>
+      </m0Views>
+      <deferredView tier="M1">PLAN_EVIDENCE_COMPARE 并排比较视图。属 descopeOrder 第 2 项。</deferredView>
+    </userExperience>
+
+    <privacy id="PRIVACY-001" status="confirmed" tier="M0">
+      <decision>数据默认不出本机。仅在用户显式发起的模型调用、搜索与 MCP 请求中，向外发送完成任务所必需的最小信息。</decision>
+      <credentialRule>API Key、MCP Server 密钥与任何凭据仅通过 Electron safeStorage 加密后存储，不得写入 SQLite 明文列、JSONL、日志、导出包或诊断上报，且永不导出。</credentialRule>
+      <identityDocumentRule>禁止上传或保存身份证、护照等证件原件、照片、完整号码、MRZ 或生物识别信息。任务中心只记录"是否已办理"的状态位。</identityDocumentRule>
+      <outboundMinimizationRule>向外部 MCP Server 发送的参数必须是完成该次查询所必需的最小集合。禁止把同行人姓名、年龄、健康或照护信息、完整行程或对话历史发给数据源类工具。</outboundMinimizationRule>
+    </privacy>
+
+    <runtime id="RUNTIME-001" status="confirmed" tier="M0">
+      <decision>Electron 主进程承载 Cordis 内核与全部服务；渲染进程只负责 UI，通过 contextBridge 暴露的受限 IPC 与内核通信。禁止在渲染进程开启 nodeIntegration。</decision>
+      <processRule>MCP stdio 类客户端由主进程 spawn 并管理生命周期，App 退出时必须全部回收。streamable-http 类客户端由主进程发起请求，凭据不进入渲染进程。</processRule>
+    </runtime>
+
+    <mapService id="MAP-001" status="confirmed" tier="M0">
+      <decision>地图与路径规划能力使用官方地图服务，通过高德 MCP Server 接入，用于步行、驾车、公交路线规划、周边搜索、地点详情、地理编码与天气。</decision>
+      <etaRule>M0 的 ETA 为规划级估计，不是实时保证。所有 ETA 必须带查询时间与"规划级估计"标注，并在时间轴中体现缓冲。</etaRule>
+    </mapService>
+  </productPlatformAndHarness>
+
+  <cordisContract id="CORDIS-001" status="confirmed" tier="M0">
+    <purpose>本节是规范性附录。Cordis 与常见 DI 框架差异明显，且编码模型的训练语料横跨多个不兼容版本，极易生成在本项目所用版本上无效的写法。实现时只允许使用本节列出的 API；需要本节之外的能力时，先在 openQuestions 追加条目，不要自行扩展。</purpose>
+    <pinnedVersion status="confirmed" verifiedDate="2026-08-21">cordis@3.18.1，在 package.json 中写死精确版本，不带插入符。本节全部断言仅对该版本成立。
+      <rationale>npm 的 latest 标签当前指向 4.0.0-rc.8，无稳定版；仓库无 Releases、无 Tags、无 CHANGELOG，README 自述 API 可能不加通知地变更。v3 与 v4 之间是重写级不兼容变更（ForkScope 与 MainScope 改为 Fiber，Lifecycle 改为 EventsService，ready 与 dispose 与 fork 三个生命周期事件被整体删除）。此外 cordis@4 是 ESM-only 且无 CJS 导出，与 Electron 主进程默认模块制式冲突。在七天窗口内，稳定版加充足生态语料的价值高于新版本特性。</rationale>
+      <tradeoff>3.18.1 是作者已转向 v4 后的停维护分支。这是明知的代价：M0 交付后若要升级 v4，本节 CC-R4 与服务注册写法需整体重写，属 M1 议题。</tradeoff>
+      <upgradeTrap>若因任何原因改用 v4，本节的 ctx.set、ForkScope 与 ctx.on('dispose') 三处全部失效，必须先重写本节再动代码。</upgradeTrap>
+    </pinnedVersion>
+    <coreConcepts>
+      <concept name="Context">应用的根对象与所有插件的执行环境。每个插件收到的 ctx 是根 Context 的一个隔离视图，插件内通过 ctx 注册的一切都归属于该插件的作用域。</concept>
+      <concept name="Service">挂载在 Context 上的具名单例。在 3.18.1 中通过 ctx.set(name, instance) 注册，返回 disposer；ctx.provide 在该版本已标注弃用，不要使用。服务一律通过 inject 声明后访问，不允许在模块顶层直接 import 另一个服务实例。</concept>
+      <concept name="Plugin">一个接收 ctx 的函数、一个带 apply 方法的对象，或一个类（Service 子类走类插件路径）。通过 ctx.plugin 装载，3.18.1 返回 ForkScope，其 dispose() 卸载该插件及其注册的副作用。</concept>
+      <concept name="Scope">插件的生命周期与资源边界。插件卸载时，其通过 ctx.on 注册的事件监听与通过 ctx.set 注册的服务会被自动回收，这是选择 Cordis 的主要收益。
+        <notAutoReclaimed>自动回收不覆盖 Cordis 不可见的资源。定时器需装载 @cordisjs/plugin-timer 并只用 ctx.interval 与 ctx.timeout，裸用 setInterval 不会被回收；MCP 子进程、SQLite 连接与文件句柄一律不会被自动回收，必须按 CC-R4 显式注册析构。</notAutoReclaimed></concept>
+      <concept name="EventBus">ctx.on 订阅、ctx.emit 广播、ctx.parallel 或等价方法等待所有监听器。事件用于跨服务解耦，不用于替代直接的服务方法调用。</concept>
+      <concept name="Inject">插件通过自身的 inject 属性声明依赖的服务名数组（函数插件用 plugin.inject = [...]，对象插件用 inject 字段，类插件用 static inject）。容器保证这些服务就绪后才执行插件主体，服务卸载时插件自动重载。ctx.using 是 3.18.1 中已弃用的旧名，不要使用。
+        <silentFailure>依赖未就绪时插件停在等待状态，不报错也不打印任何日志。少写一个 ctx.set，对应插件就永远不启动且毫无提示。这是本框架最主要的调试陷阱，八个服务的依赖图首次调通应预留时间。</silentFailure></concept>
+    </coreConcepts>
+    <usageRules>
+      <rule id="CC-R1">八个内核服务必须各自是一个独立插件文件，通过 ctx.set(name, instance) 注册，禁止把多个服务塞进一个插件。</rule>
+      <rule id="CC-R2">服务之间只能通过注入获取，禁止跨文件 import 具体实例，禁止使用模块级全局单例。</rule>
+      <rule id="CC-R3">跨服务的状态变化通过事件广播，例如 travel/state-updated、evidence/claim-added、tool/invoked、gate/blocked。事件名使用"域/动作"命名。</rule>
+      <rule id="CC-R4">需要清理的资源（MCP 子进程、SQLite 连接、文件句柄）必须在插件内注册析构回调，禁止依赖进程退出兜底。3.18.1 的写法是 ctx.on('dispose', () =&gt; cleanup())。
+        <versionTrap>此写法仅在 3.x 有效。cordis@4 已删除 dispose 事件，同样的代码在 v4 上既不报错也永不触发，会静默泄漏包括 MCP 子进程在内的全部资源。若版本变动，本条必须改写为 ctx.effect(() =&gt; { ...; return () =&gt; cleanup() })。</versionTrap>
+        <exitOrder>App 退出时必须等待全部插件析构完成后再退出，见 RUNTIME-001。</exitOrder></rule>
+      <rule id="CC-R5">禁止在事件监听器中执行长耗时的模型调用；监听器只做派发，实际工作交给对应服务的方法。</rule>
+      <rule id="CC-R6">自定义事件必须做 TypeScript 声明合并后才能被 ctx.on 接受，否则类型检查直接拒绝。3.18.1 的 Events 接口带类型参数，合并时必须写成 interface Events&lt;C extends Context = Context&gt; 的形式，漏掉类型参数会静默不生效。事件名可用斜杠，但禁止使用 internal/ 前缀（框架保留）。</rule>
+    </usageRules>
+    <eventCatalog tier="M0">
+      <note>每个事件都需要一条声明合并样板（见 CC-R6），因此目录刻意保持最小。model/called 纯遥测无 M0 消费方，source/degraded 与 MCP-001 的降级标记重复，两者均已删除，需要时再加。</note>
+      <event name="session/created" payload="sessionId"/>
+      <event name="session/stage-changed" payload="sessionId, fromStage, toStage"/>
+      <event name="event/appended" payload="sessionId, eventId, eventType"/>
+      <event name="travel/state-updated" payload="sessionId, changedPaths"/>
+      <event name="evidence/claim-added" payload="sessionId, claimId, verificationStatus"/>
+      <event name="tool/invoked" payload="sessionId, toolName, durationMs, ok"/>
+      <event name="gate/blocked" payload="sessionId, gateId, reasonCode"/>
+    </eventCatalog>
+  </cordisContract>
+
+  <mcpDataLayer id="MCP-001" status="confirmed" tier="M0">
+    <purpose>替代 v0.7 的自建平台 SourceAdapter 与专用浏览器登录态。这是 v0.7 到 v1.0 唯一的架构级替换，也是 7 天可行性的核心依据。</purpose>
+    <architecturalMapping>
+      <mapping from="SourceAdapter" to="McpSourceAdapter">SourceAdapter 接口保持不变，实现体改为包装一个 MCP 客户端。v0.7 sourceAdapterContract 的字段逐项映射：adapterId 映射 MCP server 标识，transport 映射 stdio 或 streamable-http，capabilities 映射该 server 暴露的工具集合，freshnessPolicy 保持不变，degradationBehavior 保持不变。</mapping>
+      <mapping from="页面结构漂移检测" to="工具 Schema 校验失败">v0.7 要求在页面结构变化时 fail-closed。等价规则改为：MCP 工具返回结果未通过本地 Zod Schema 校验，或工具从 server 的 tools 列表中消失，则将该 source 标记为 SOURCE_ADAPTER_DEGRADED，停止使用其数据并向用户显示降级原因。</mapping>
+      <mapping from="签名适配器包" to="不适用">M0 不分发第三方适配器，MCP Server 由用户在设置中显式配置，因此不需要签名分发机制。</mapping>
+    </architecturalMapping>
+
+    <source id="SRC-RAIL" name="12306-mcp" status="confirmed" tier="M0" trustLevel="TRANSACTION_UNOFFICIAL">
+      <repository>https://github.com/Joooook/12306-mcp</repository>
+      <transport>stdio</transport>
+      <launch>npx -y 12306-mcp</launch>
+      <alternateLaunch>npx -y 12306-mcp --port 8080 （streamable-http 模式，便于调试）</alternateLaunch>
+      <prerequisite>Node.js 18 以上；当前版本 0.3.10。无需任何 API Key，匿名访问公开接口。</prerequisite>
+      <upstream>kyfw.12306.cn 与 search.12306.cn 的公开查询接口。</upstream>
+      <tools>
+        <tool name="get-current-date" purpose="获取上游服务器当前日期，用于相对日期换算。"/>
+        <tool name="get-stations-code-in-city" purpose="按城市名取该市全部车站代码。"/>
+        <tool name="get-station-code-of-citys" purpose="按城市名取城市级代码。"/>
+        <tool name="get-station-code-by-names" purpose="按车站名精确取代码。"/>
+        <tool name="get-station-by-telecode" purpose="按电报码反查车站。"/>
+        <tool name="get-tickets" purpose="查询指定日期与出发到达站之间的车次、席别与余票。"/>
+        <tool name="get-interline-tickets" purpose="查询中转换乘方案。"/>
+        <tool name="get-train-route-stations" purpose="查询某车次的经停站与时刻。"/>
+      </tools>
+      <capabilityMapping>
+        <maps to="FR-402">往返城际交通方案生成与比较。</maps>
+        <maps to="FR-403">抵达与离开时段对首末日可用时长的影响。</maps>
+        <maps to="STAGE-4">Day Skeleton 的到达/离开硬锚点。</maps>
+      </capabilityMapping>
+      <risks>
+        <risk severity="high">该项目为非官方实现，README 声明仅用于学习。上游接口调整或风控策略变化会直接导致不可用，且无 SLA。</risk>
+        <risk severity="medium">余票数字为查询瞬时值，不构成可预订保证。必须按 15 分钟有效期处理并在时间轴中标注查询时间。</risk>
+        <scopeNote>本源不提供任何机票能力。12306 网站虽有空铁联运售票，但该 MCP 暴露的八个工具全部为铁路查询，仓库中不存在航班相关实现。机票按 SRC-FLIGHT 的 m0Replacement 走用户粘贴。</scopeNote>
+        <risk severity="medium">高频调用可能触发上游限制。必须限速。</risk>
+        <risk severity="high" verifiedDate="2026-08-21">结构性脆弱：该 server 启动时通过正则匹配 12306 首页 HTML 来定位站点表脚本并构建车站索引。12306 页面结构一变即初始化失败，此类故障已在 2026-06 与 2026-07 各发生过一次。应按"平均每一到两个月因上游变更中断一次"来规划，而不是按稳定依赖规划。</risk>
+      </risks>
+      <mitigations>
+        <mitigation>会话开始时执行一次 get-current-date 作为健康检查；失败则将 SRC-RAIL 标记 SOURCE_ADAPTER_DEGRADED。</mitigation>
+        <mitigation>降级路径：提示用户自行在 12306 查询并把车次、出发到达时间粘贴回系统，系统以 UNVERIFIED 记录并要求用户确认后升级为 VERIFIED_BY_USER。</mitigation>
+        <mitigation>同一查询 15 分钟内复用缓存；单次会话对 get-tickets 的调用施加节流。</mitigation>
+        <mitigation>仅用于查询与规划。系统绝不代为购票；购票始终由用户在 12306 官方渠道完成。</mitigation>
+      </mitigations>
+    </source>
+
+    <source id="SRC-HOTEL" name="RollingGo 酒店 MCP" status="confirmed" tier="M0" trustLevel="COMMERCIAL_OFFER">
+      <repository verifiedDate="2026-08-21">https://github.com/RollingGo-AI/rollinggo-hotel-mcp （最后推送 2026-06-25）。供应方已另建更新的仓库 RollingGo-AI/RollingGo-hotel-MCP-CN 与 DIDA-AI/Dida-RollingGo-hotel-MCP-CN（均 2026-08-05），接入前应以新仓库文档为准。</repository>
+      <transport>streamable-http</transport>
+      <endpoint>https://mcp.rollinggo.cn/mcp</endpoint>
+      <auth>请求头 Authorization: Bearer 加密钥，备选 X-Secret-Key。密钥必须以 mcp_ 开头。申请入口官方口径不统一，中文文档指向 travelportal-partner-center.dida.com，英文文档指向 mcp.agentichotel.cn/apply，另有 rollinggo.store/apply，三者并存。密钥存入 safeStorage。</auth>
+      <httpNote>直接以 cURL 调试时必须带 Accept: application/json, text/event-stream，否则返回 400。</httpNote>
+      <allowedTools>
+        <tool name="searchHotels" purpose="按自然语言与地点、入住日期、星级等条件检索酒店候选。"/>
+        <tool name="getHotelDetail" purpose="取单个酒店的房型、费用构成与取消政策等详情。"/>
+        <tool name="getHotelSearchTags" purpose="取可用筛选标签，用于把用户偏好映射为结构化筛选条件。"/>
+      </allowedTools>
+      <exampleArgs tool="searchHotels" verifiedDate="2026-08-21">必填三项：originQuery 用户自然语言原句、place 可地理解析的单一地点文本、placeType 枚举（城市、机场、景点、火车站、地铁站、酒店、区县、详细地址）。可选：countryCode 为 ISO 3166-1 两位大写；size 默认 5 最大 20；checkInParam 含 adultCount 默认 2、checkInDate 为 YYYY-MM-DD、stayNights 默认 1；filterOptions 含 distanceInMeter 与 starRatings；hotelTags 含 preferredTags、requiredTags、excludedTags、preferredBrands、maxPricePerNight、minRoomSize。
+        <paramTrap>starRatings 是 [min, max] 两元素区间而非星级枚举列表，写成 [5.0] 是残缺区间。checkInDate 缺失、格式错误或已过期时上游会静默回落为明天，必须在本地先校验再发送。</paramTrap></exampleArgs>
+      <capabilityMapping>
+        <maps to="FR-501">具体住宿候选生成。</maps>
+        <maps to="FR-513">房型、床型与可住人数核验。</maps>
+        <maps to="FR-514">费用构成与取消政策核验。</maps>
+        <maps to="FR-409">住宿位置与每日路线的联合评估。</maps>
+      </capabilityMapping>
+      <risks>
+        <risk severity="high">该数据源为单一 B2B 供应链库存，不是携程、美团或飞猪的聚合结果。国内部分城市与部分本土酒店的覆盖可能明显稀疏，价格也未必与主流 OTA 的 C 端价格一致。</risk>
+        <risk severity="medium" verifiedDate="2026-08-21">下单、支付与锁价工具（createHotelBookingWithPaymentURL、hotelPriceConfirm）确实存在，但仅在需商务对接的 OAuth 2.0 授权码模式下暴露；本项目采用的 API Key 模式端点只提供上述三个只读工具。白名单仍必须保留作为纵深防御，但不应被描述为"阻止已暴露的下单能力"。</risk>
+        <risk severity="high">返佣加价模式。供应方明示接入方可按国家设置加价比例并从用户预订中获得返佣，因此返回价格可能不是中立市场价。系统不得声称向用户展示的是真实市场价。</risk>
+        <risk severity="medium">contentIdentity 应判定为 COMMERCIAL_OFFER，其排序与推荐结果带有供应商倾向，不能当作中立事实。</risk>
+      </risks>
+      <mitigations>
+        <mitigation ref="MCP-ALLOWLIST">在 ToolRegistry 层实施硬白名单，只注册上述 allowedTools。任何未在白名单中的工具即使 server 暴露也必须拒绝注册并记录一条 tool/blocked 审计事件。</mitigation>
+        <mitigation ref="FR-501">不把本源当作主来源。SRC-HOTEL、SRC-SEARCH 与用户手工粘贴三条来源地位平等，合并为一份可比较列表；覆盖稀疏因此不再是需要触发降级切换的故障，而是列表中如实呈现的一项事实。</mitigation>
+        <mitigation ref="FR-512">列表必须显示各来源的候选数量分布与总数。本源返回为空或明显偏少时如实告知，并提示用户可手工粘贴补充。系统明确告知"本源数据来自单一供应商库存，可能不全，价格未必与主流 OTA 的 C 端价格一致，建议与你常用的平台交叉核对"。</mitigation>
+        <mitigation>所有来自该源的价格标注 COMMERCIAL_OFFER 与 15 分钟有效期，并在 UI 中与 OFFICIAL 来源视觉区分。</mitigation>
+        <mitigation>禁止把同行人姓名、证件、联系方式发送给该服务；仅发送人数、日期、区域与筛选条件。</mitigation>
+      </mitigations>
+    </source>
+
+    <source id="SRC-FLIGHT" name="RollingGo 机票 MCP" status="descoped" tier="M1" verifiedDate="2026-08-21">
+      <descopeReason>核验发现 github.com/RollingGo-AI/rollinggo-flight-mcp 已返回 404，且供应方 2026-08-05 更新的新版仓库已从端点表格中删除机票整行。端点 https://mcp.rollinggo.cn/mcp/flight 仍返回 401 说明路由存活，但一手 schema 已无法获取，searchFlights 的参数名无法验证。在七天窗口内接入一个参数名靠猜、且供应方正在撤回文档的数据源，风险与收益不成比例。</descopeReason>
+      <m0Replacement>M0 不接入任何机票数据源。需要航空方案时，用户自行在任意平台查询后把航班号、起降机场与起降时刻粘贴回系统，走与住宿、攻略相同的手工粘贴通道，记为 UNVERIFIED 并经用户确认后升级为 VERIFIED_BY_USER。该通道本就要为其他来源实现，复用它不产生新增工作量。</m0Replacement>
+      <groundTransferRule>无论航班数据来自何处，机场到市区的地面接驳时间必须由 SRC-MAP 单独计算并计入门到门总时长，禁止只比较飞行时间。本规则在 M0 对粘贴进来的航班同样生效。</groundTransferRule>
+      <m1Condition>若 M1 重新评估接入，第一步必须是拿到 Key 后调用 tools/list 落地真实 schema，再决定是否继续，不得沿用本文件中任何未经验证的工具参数。</m1Condition>
+    </source>
+
+    <source id="SRC-MAP" name="高德地图 MCP" status="confirmed" tier="M0" trustLevel="OFFICIAL">
+      <transportPrimary verifiedDate="2026-08-21">streamable-http，官方托管端点 https://mcp.amap.com/mcp?key=你的key。key 走 URL query 参数，不走请求头。</transportPrimary>
+      <correction>此前本节写的"官方 SSE 端点"是错误信息。高德已于 2026-03-17 正式下线通用级 SSE 协议的 MCP 服务方案，按 SSE 接入会直接失败。</correction>
+      <transportAlternate>stdio，本地运行 npx -y @amap/amap-maps-mcp-server，通过环境变量 AMAP_MAPS_API_KEY 提供 key。注意包名带 @amap 作用域前缀，写成 amap-maps-mcp-server 会装不上。需 Node.js 22.14.0 以上。</transportAlternate>
+      <prerequisite priority="critical">必须先完成高德开放平台的个人实名认证。未认证账号的全部服务配额为零，Day 1 拿到的 key 将无法调用任何接口。此项应在 D0 完成。</prerequisite>
+      <toolsOfInterest>
+        <tool name="maps_direction_walking" purpose="步行路径与时长。"/>
+        <tool name="maps_direction_transit_integrated" purpose="公交地铁综合换乘方案与时长。"/>
+        <tool name="maps_direction_driving" purpose="驾车路径与时长，用于出租与网约车估算。"/>
+        <tool name="maps_geo 与 maps_regeocode" purpose="地址与坐标互转，用于统一景点、餐厅与酒店的坐标。"/>
+        <tool name="maps_around_search" purpose="周边检索，用于餐饮与配套。计入 5000 次每月的搜索配额。"/>
+        <tool name="maps_search_detail" purpose="地点详情。计入同一稀缺配额，因此 M0 不自动拉取，仅在用户显式点击某个候选时才调用。"/>
+        <tool name="maps_text_search" purpose="关键词 POI 搜索，用于把景点与餐厅名解析为坐标。计入同一稀缺配额，结果必须进本地缓存。"/>
+        <tool name="maps_weather" purpose="目的地天气，用于室内外备选与 GATE_C。"/>
+        <tool name="maps_distance" purpose="距离测算，用于粗粒度空间聚类。"/>
+      </toolsOfInterest>
+      <capabilityMapping>
+        <maps to="FR-405">当地交通策略。</maps>
+        <maps to="FR-406">景点粗粒度空间聚类。</maps>
+        <maps to="FR-503">每日路线精排与段间 ETA。</maps>
+        <maps to="FR-504">餐饮候选的位置与绕路评估。</maps>
+      </capabilityMapping>
+      <quota status="confirmed" verifiedDate="2026-08-21">配额按月计，不按日计。个人实名认证账号：基础 LBS 服务（地理编码、逆地理编码、各类路径规划、距离测算、IP 定位）150000 次每月；基础搜索服务（maps_text_search、maps_around_search、maps_search_detail 三者共享同一池）5000 次每月；天气 5000 次每月。全部服务 QPS 上限为 3。未认证账号一律为 0。
+        <bottleneck>真正的瓶颈是搜索类的 5000 次每月，不是路径规划。按一次三日行程约消耗 20 次搜索估算，每月仅够约 250 次完整规划，而开发联调期反复试跑极易在一两周内耗尽。</bottleneck>
+        <billingRisk>超额不是拒绝服务而是自动扣费，基础搜索服务 30 元每万次且无折扣。个人项目存在意外产生真实费用的风险，必须设本地调用计数与上限熔断。</billingRisk>
+      </quota>
+      <risks>
+        <risk severity="high">搜索类月配额仅 5000 次且三个工具共享，是全项目最稀缺的外部资源。</risk>
+        <risk severity="high">QPS 硬上限为 3。Agent 在聚类与精排阶段容易并发发起多次调用，极易触发限流。</risk>
+        <risk severity="medium">ETA 为规划级估计，不含实时突发路况；用于严格卡点会低估风险。</risk>
+      </risks>
+      <mitigations>
+        <mitigation ref="NFR-029" priority="critical">MCP 调用层必须对本源强制串行化并限速到 QPS 3 以下。这是功能性要求不是性能优化，缺失会直接导致限流失败。</mitigation>
+        <mitigation ref="NFR-030" priority="critical">POI 名称到坐标与详情的映射必须本地持久化缓存，跨会话复用。这是让 5000 次月配额可用的前提。</mitigation>
+        <mitigation>同一起讫点对在会话内缓存；聚类阶段用 maps_distance 粗筛，只对最终候选调用完整路径规划。</mitigation>
+        <mitigation>时间轴中每个交通段按 M0 缓冲规则追加缓冲，且抵离机场火车站的锚点使用更保守的缓冲。</mitigation>
+      </mitigations>
+    </source>
+
+    <source id="SRC-SEARCH" name="通用网页搜索与官方页面读取" status="confirmed" tier="M0" trustLevel="MIXED">
+      <purpose>覆盖 MCP 数据源之外的事实：景点开放时间与闭园公告、预约规则、门票政策、季节性活动、UGC 体验线索。</purpose>
+      <implementation>由 Provider 侧联网搜索能力或独立搜索 API 提供；对搜索结果中的官方站点链接做正文抽取。</implementation>
+      <rule>只读取公开可访问页面。禁止绕过登录墙、验证码、反爬与付费墙。目标站点明确拒绝自动化访问时必须放弃并转为提示用户手工查证。</rule>
+      <contentIdentityRule>官方站点判定为 OFFICIAL；平台点评与社媒内容判定为 INDEPENDENT_UGC 或 SUSPECTED_PROMOTION；带明显推广特征的内容不得单独作为决策依据。</contentIdentityRule>
+    </source>
+
+    <toolAllowlist id="MCP-ALLOWLIST" status="confirmed" tier="M0">
+      <rule>ToolRegistry 在装载任何 MCP Server 时，先拉取其 tools 列表，与本文件声明的 allowedTools 做交集，只注册交集内的工具。</rule>
+      <rule>被拒绝注册的工具必须记录一条包含 server 标识与工具名的审计事件，并在 Inspector 中可见。</rule>
+      <rule>白名单之外的工具即使被模型请求调用也必须在 PolicyService 层拦截，返回明确的拒绝原因而不是静默失败。</rule>
+      <rule>任何名称或描述中包含下单、支付、预订确认、锁价、盯价、取消、退款语义的工具一律禁止注册，即使它出现在未来版本的 allowedTools 中，也需要人工复核后才能放行。</rule>
+      <rule verifiedDate="2026-08-21">唤端类工具按非只读处理，一律拒绝注册。高德官方远程端点除查询工具外还提供"生成专属地图""导航到目的地""打车"三项唤端能力，它们不写入数据但会拉起外部 App 并可能触发打车下单，落在 PR-008 的不可逆动作禁令内。本地 @amap/amap-maps-mcp-server 0.0.8 不含这三项，这是优先选用本地 stdio 方式的一个理由。</rule>
+    </toolAllowlist>
+
+    <sourceHealthPolicy id="MCP-HEALTH" status="confirmed" tier="M0">
+      <rule>App 启动与每次会话开始时，对已配置的每个 source 执行一次低成本探针调用，结果写入 SETTINGS 视图的连通性状态。</rule>
+      <rule>连续两次调用失败或 Schema 校验失败即标记 SOURCE_ADAPTER_DEGRADED，停止把该源用于新事实获取，已获取的事实保留但降级为 STALE。</rule>
+      <rule>任一 source 降级都必须在对话中显式告知用户其影响范围与替代方式，禁止静默用模型常识填补空缺。</rule>
+    </sourceHealthPolicy>
+  </mcpDataLayer>
+
+  <functionalRequirements>
+    <stage id="STAGE-1" name="基础信息采集" tier="M0" status="confirmed">
+      <requirement id="FR-101" tier="M0">采集出发地点，精确到城市；M0 只接受单一出发城市。</requirement>
+      <requirement id="FR-102" tier="M0">采集目的地意向，允许模糊表达（如"想去海边"）并在 STAGE-2 收敛为单一城市。</requirement>
+      <requirement id="FR-103" tier="M0">采集出游人员结构：人数、年龄段、关系、体力水平、照护需求与功能性限制。儿童与老人必须显式标注，因为它们直接影响节奏与步行距离约束。</requirement>
+      <requirement id="FR-104" tier="M0">采集出游时间：确定日期区间或"某月的几天"这类弹性表达，并识别法定节假日与旺季。</requirement>
+      <requirement id="FR-105" tier="M0">在进入 STAGE-2 前输出基础信息确认卡片，用户可逐项修改。卡片同时执行 M0-ENVELOPE 包络校验，超出包络时按 envelopeGuardRule 处理。</requirement>
+      <requirement id="FR-106" tier="M0">对话必须遵守 PR-001 与 PR-002：一次一个主要问题，不重复询问已知信息。</requirement>
+      <requirement id="FR-107" tier="M0" resolves="OQ-019">包络外处理方案对比与拆会话。检测到超包络时，生成方案对比卡片，逐项给出能拿到什么、拿不到什么、用户需手工承担什么、规划质量差异；用户选择拆会话时，按 ENV-SPLIT 创建关联子会话并写入 linkedSessionGroup，在各子会话首末日标注衔接点；用户选择缩小包络时，记录被舍弃的目的地或住宿变更。无论选哪种，决策与被放弃方案一并写入 DecisionLog。系统不得代替用户选择，也不得因用户未选择而擅自继续。</requirement>
+    </stage>
+
+    <stage id="STAGE-2" name="目标偏好与目的地收敛" tier="M0" status="confirmed">
+      <requirement id="FR-201" tier="M0">采集旅行目标与体验偏好，区分硬性约束、柔性偏好与可协商变量。</requirement>
+      <requirement id="FR-202" tier="M0">采集预算：总预算或人均预算，明确是否含往返交通与购物。预算记为柔性区间而非硬阈值，除非用户明确声明为硬上限。</requirement>
+      <requirement id="FR-203" tier="M0">基于人员结构、季节、预算与出发地生成目的地筛选条件。</requirement>
+      <requirement id="FR-204" tier="M0">生成二至四个候选目的地，每个候选给出适配理由、代价、风险与主要依据来源。</requirement>
+      <requirement id="FR-205" tier="M0">用户确认单一目的地后写入 TravelState 并推进阶段。</requirement>
+      <requirement id="FR-206" tier="M1">目的地对比矩阵视图。M0 以对话内的结构化卡片替代。</requirement>
+    </stage>
+
+    <stage id="STAGE-3" name="目的地情报研究与验证" tier="M0" status="confirmed">
+      <requirement id="FR-301" tier="M0">允许用户先粘贴自己已收集的攻略、链接或截图文本作为研究起点，系统将其作为线索而非事实。</requirement>
+      <requirement id="FR-302" tier="M0">派发只读 Source Subagent 通过 SRC-SEARCH 与 SRC-MAP 进行多来源研究，产出候选景点、体验与餐饮线索。</requirement>
+      <requirement id="FR-303" tier="M0">对研究结果做实体去重：同一景点的不同称呼、不同来源必须归并为一个实体并保留全部来源引用。</requirement>
+      <requirement id="FR-304" tier="M0">为每条事实生成 EvidenceClaim，标注 contentIdentity 与 verificationStatus。</requirement>
+      <requirement id="FR-305" tier="M0">识别并降权推广内容。带明显推广特征的来源单独出现时不得作为推荐依据。</requirement>
+      <requirement id="FR-306" tier="M0">按同行成员适配过滤：体力要求、步行距离、台阶与坡度、儿童适宜性、无障碍与休息点可得性。缺失信息标记为未知而不是假定满足。</requirement>
+      <requirement id="FR-307" tier="M0">输出景点与餐饮线索确认清单，用户可标记必去、想去、无所谓与排除。</requirement>
+      <requirement id="FR-308" tier="M0">对必去项即时核验开放时间、闭园安排与预约要求；核验失败必须在此阶段暴露，不得留到时间轴阶段。</requirement>
+    </stage>
+
+    <stage id="STAGE-4" name="交通住宿行程骨架联合决策" tier="M0" status="confirmed">
+      <requirement id="FR-401" tier="M1">自驾与租车条件核验。M0 排除。</requirement>
+      <requirement id="FR-402" tier="M0">通过 SRC-RAIL 与 SRC-FLIGHT 生成往返城际交通候选，按门到门总时长、总费用、对首末日可用时长的影响与对老人儿童的舒适度四个维度比较，输出推荐方案与一至两个有实质差异的备选。</requirement>
+      <requirement id="FR-403" tier="M0">将抵达与离开时刻转化为 ARRIVAL_DAY 与 DEPARTURE_DAY 的硬锚点，并据此计算首末日的真实可用时长。</requirement>
+      <requirement id="FR-404" tier="M1">多人异地出发与会合优化。M0 排除。</requirement>
+      <requirement id="FR-405" tier="M0">确定当地交通策略：按日给出以步行加公共交通为主还是以打车为主的倾向，并说明对预算与体力的影响。</requirement>
+      <requirement id="FR-406" tier="M0">对确认的景点做粗粒度空间聚类，使同一半日内的项目地理邻近，避免跨城折返。</requirement>
+      <requirement id="FR-407" tier="M0">生成半日级 Day Skeleton：每天分上午、下午、晚间三段，每段填入聚类后的区域与主项目，标注 dayType 与强度等级。</requirement>
+      <requirement id="FR-408" tier="M0">为每日午餐与晚餐确定餐饮区域锚点（不指定具体门店），锚点必须落在该时段行程动线上。</requirement>
+      <requirement id="FR-409" tier="M0">联合决定 Stay Segment：住宿区域必须使 Day Skeleton 的每日通勤总时长最小化。M0 固定为一个 Stay Segment，覆盖全部住宿夜。</requirement>
+      <requirement id="FR-510" seeV07="FR-409F,FR-409H" tier="M0">明确住宿夜数与每夜日期，抵达当日与离开当日的住宿归属必须显式判定。</requirement>
+      <requirement id="FR-511" seeV07="FR-409G" tier="M1">多 Stay Segment 与换住宿的收益成本判断。M0 排除。</requirement>
+      <requirement id="FR-410" tier="M0">骨架必须经用户确认后才进入 STAGE-5。确认前允许用户直接在 SKELETON 视图调整半日安排，系统只重算受影响部分。</requirement>
+    </stage>
+
+    <stage id="STAGE-5" name="具体化与最终时间轴" tier="M0" status="confirmed">
+      <requirement id="FR-501" tier="M0" resolves="OQ-020">在 FR-409 确定的区域内生成住宿候选，合并为一份可比较列表交用户选择。候选来源包括 SRC-HOTEL、SRC-SEARCH 与用户手工粘贴三条，三者并存且地位平等，系统不预设主备关系。列表中每条候选必须标注来源、contentIdentity、verificationStatus、覆盖全部住宿夜的可比较总成本与位置优势说明；来自 SRC-HOTEL 的条目标注为 COMMERCIAL_OFFER，与其他来源在视觉上可区分。系统只负责把候选摆齐并讲清差异，选择由用户做出。</requirement>
+      <requirement id="FR-512" tier="M0">住宿候选列表必须显示每条候选的来源分布情况与候选总数。当某一来源返回为空或明显偏少时，如实告知并提示用户可手工粘贴补充，禁止在列表稀疏时静默呈现为"这就是全部选项"。</requirement>
+      <requirement id="FR-513" seeV07="FR-501G" tier="M0">核验房型、床型与可住人数是否满足同行人数与结构；不满足或信息缺失必须显式标注，不得默认满足。</requirement>
+      <requirement id="FR-514" seeV07="FR-501H,FR-501J" tier="M0">核验费用构成与取消政策，明确是否可免费取消及最晚免费取消时间。</requirement>
+      <requirement id="FR-501F" seeV07="FR-501F" tier="M2">跨平台住宿实体、房型与价格计划三级匹配。M0 与 M1 均不实现，见 RC-002。</requirement>
+      <requirement id="FR-502" tier="M0">按 dayType 生成每日路线精排。M0 只支持 ARRIVAL_DAY、NORMAL_DAY、DEPARTURE_DAY 三种。</requirement>
+      <requirement id="FR-515" seeV07="FR-502B" tier="M1">HOTEL_CHANGE_DAY 与 INTERCITY_TRANSFER_DAY。M0 排除。</requirement>
+      <requirement id="FR-503" tier="M0">对每日相邻项目通过 SRC-MAP 计算段间 ETA 与推荐交通方式，按 M0 缓冲规则追加缓冲，形成带时刻的日程序列。</requirement>
+      <requirement id="FR-504" tier="M0">在 FR-408 的餐饮锚点内选定具体餐厅候选，核验营业时间与是否需预约，并评估相对动线的绕路成本。</requirement>
+      <requirement id="FR-505" tier="M0">编译 FinalTimeline：每个条目带 itemClass、anchorClass、起止时间、位置、交通方式、预计费用与关联 EvidenceClaim。</requirement>
+      <requirement id="FR-516" seeV07="FR-501L,FR-505L" tier="M0">时间轴必须通过最终 Verification Gate 才能发布为版本；未通过的条目必须显式标注并阻止 GATE_C 通过。</requirement>
+      <requirement id="FR-517" seeV07="FR-502I" tier="M0">每日至少保留一个 BACKUP 项，用于天气或临时闭园等常见失效场景。</requirement>
+      <requirement id="FR-506" tier="M0">从时间轴派生 PreparationTask 与 ReservationTicketTask，含负责人、截止时间与 recheckAt。</requirement>
+      <requirement id="FR-507" tier="M0">ReservationTicketTask 只生成交接说明（做什么、去哪个官方渠道、注意事项、截止时间），系统不执行任何预订或支付动作。用户在外部完成后回填结果。</requirement>
+      <requirement id="FR-508" tier="M0">出发前执行 GATE_C：复核硬锚点的时效性、天气、闭园公告与所有未完成的高优先级任务，输出可放行或阻塞清单。</requirement>
+      <requirement id="FR-509" tier="M0">导出 ICS 日历文件与 Markdown 行程文档。导出内容不得包含任何凭据。PDF 导出属 M1。</requirement>
+    </stage>
+
+    <stage id="STAGE-6" name="旅行中执行" tier="M1" status="confirmed" seeV07="STAGE-6">
+      <deferredNote>FR-601 至 FR-603 的完整契约已在 v0.7 确认，M0 不实现，也不预留 UI 入口。</deferredNote>
+    </stage>
+
+    <stage id="STAGE-7" name="旅行后复盘" tier="M2" status="confirmed" seeV07="STAGE-7">
+      <deferredNote>费用结算、复盘与长期记忆的契约见 v0.7。</deferredNote>
+    </stage>
+  </functionalRequirements>
+
+  <decisionModel status="confirmed" tier="M0">
+    <constraintPriority>
+      <level order="1">硬性约束：日期、预算硬上限、成员体力与照护限制、必去项、已确认的外部预订。违反即方案无效。</level>
+      <level order="2">高影响柔性偏好：节奏强度、住宿区域倾向、交通方式倾向。</level>
+      <level order="3">一般偏好：具体景点与餐饮口味倾向。</level>
+    </constraintPriority>
+    <optimizationObjective>在满足全部硬性约束的前提下，最小化无效通勤时长与体力透支风险，最大化群体满意度与预算利用效率。冲突时优先保护最弱成员的可行性。</optimizationObjective>
+    <itemClass>
+      <value name="FIXED">时间与地点均不可移动，如已购车次、已确认预约。</value>
+      <value name="RECOMMENDED">系统推荐且用户已认可，可小幅调整。</value>
+      <value name="FLEXIBLE">时间可在当日内浮动。</value>
+      <value name="OPTIONAL">时间不足时可整体删除且不影响行程完整性。</value>
+      <value name="BACKUP">主项目失效时的替代项，默认不占用时间。</value>
+    </itemClass>
+    <anchorClass>
+      <value name="HARD_LOCKED">外部不可变事实，如航班起飞时刻。</value>
+      <value name="CONFIRMED_EXTERNAL">用户已在外部平台完成确认的事项。</value>
+      <value name="MUST">用户声明的必去项。</value>
+      <value name="PREFERRED">用户倾向但可让步。</value>
+      <value name="FLEXIBLE">无锚定要求。</value>
+    </anchorClass>
+    <bufferRule id="M0-BUFFER" tier="M0">
+      <rule>市内景点之间的交通段在 ETA 基础上追加百分之二十且不少于十分钟的缓冲。</rule>
+      <rule>前往机场或火车站的交通段追加百分之五十且不少于三十分钟的缓冲，并额外计入值机安检或进站时间。</rule>
+      <rule>含老人或儿童时，每个景点的停留时长下限上浮，且每半日至少安排一次可休息的节点。</rule>
+      <rule>缓冲必须在时间轴中可见，不允许隐式吸收，否则用户无法判断真实余量。</rule>
+    </bufferRule>
+    <alternativeRule>只在高影响节点（往返交通、住宿、单日主行程）提供备选，且备选必须与主方案存在实质差异（费用、时长或体验维度至少一项显著不同）。禁止提供仅有细微差别的凑数备选。</alternativeRule>
+    <recalculationRule>用户修改任一条件后，系统只重算受影响范围并展示候选变更，不自动应用。用户确认后以新版本、当前时间轴与 DecisionLog 三者原子写回。</recalculationRule>
+  </decisionModel>
+
+  <informationGovernance status="confirmed" tier="M0">
+    <evidenceClaim id="EC-001">
+      <purpose>系统中所有外部事实的统一载体。任何进入推荐或时间轴的外部事实都必须有对应 EvidenceClaim，无 Claim 的事实视为模型臆测并被阻止。</purpose>
+      <field name="claimId" required="true"/>
+      <field name="sessionId" required="true"/>
+      <field name="subject" required="true">事实所描述的对象，如某景点、某车次、某酒店。</field>
+      <field name="predicate" required="true">事实类型，如开放时间、票价、余票、ETA、取消政策。</field>
+      <field name="value" required="true">结构化取值。</field>
+      <field name="sourceId" required="true">来自哪个 source，如 SRC-RAIL、SRC-MAP、SRC-SEARCH。</field>
+      <field name="sourceRef" required="true">具体引用，如 URL、工具名与参数摘要。</field>
+      <field name="contentIdentity" required="true">OFFICIAL、TRANSACTION、INDEPENDENT_UGC、COMMERCIAL_OFFER、SUSPECTED_PROMOTION、UNKNOWN。</field>
+      <field name="verificationStatus" required="true">VERIFIED、CORROBORATED、ESTIMATED、UNVERIFIED、CONFLICTED、STALE。</field>
+      <field name="observedAt" required="true">获取时间。</field>
+      <field name="validUntil" required="true">按 validityWindow 计算的失效时间。</field>
+      <field name="confidence" required="false"/>
+      <field name="conflictsWith" required="false">冲突的其他 claimId 列表。</field>
+      <field name="notes" required="false"/>
+      <m0Note>十四个字段在 M0 全部存在。conflictsWith 的自动计算属 M1；M0 由 VERIFIER 在明显冲突时写入，不要求穷尽检测。</m0Note>
+    </evidenceClaim>
+    <validityWindow tier="M0">
+      <window scope="价格与库存" duration="15 分钟"/>
+      <window scope="ETA 与拥堵" duration="10 分钟"/>
+      <window scope="当日交通、天气与临时闭园" duration="30 分钟"/>
+      <window scope="营业时间与预约规则" duration="7 天，且不可逆动作前 24 小时内必须重查"/>
+      <window scope="UGC 体验类线索" duration="6 个月，且需季节匹配"/>
+      <expiryRule>超过 validUntil 的 Claim 自动转为 STALE。STALE 的 Claim 不得支撑 GATE_C 通过，也不得作为新推荐的唯一依据。</expiryRule>
+    </validityWindow>
+    <verificationGate tier="M0">
+      <rule>硬锚点（往返交通时刻、必去项开放时间与预约要求、住宿入住离店日期）必须达到 VERIFIED 或被显式标注为未知，二者必居其一。</rule>
+      <rule>COMMERCIAL_OFFER 与 SUSPECTED_PROMOTION 单独出现时不得支撑 VERIFIED，最多为 UNVERIFIED。</rule>
+      <rule>两个及以上独立来源一致时可判定 CORROBORATED。</rule>
+      <rule>系统自行推算得出的值（如总费用、总时长）标注 ESTIMATED 并说明推算依据。</rule>
+      <rule>发现冲突时标注 CONFLICTED 并同时展示两方来源，交由用户裁决，禁止系统静默择一。</rule>
+      <hallucinationRule>禁止生成没有 sourceRef 的 EvidenceClaim。模型输出中出现无法追溯来源的具体数字、时刻或政策，一律视为不可用并要求重新检索。</hallucinationRule>
+    </verificationGate>
+    <readinessGate>
+      <gate id="GATE_A" tier="M1">骨架可行性预检。M0 由 FR-410 的用户确认承担等价职责。</gate>
+      <gate id="GATE_B" tier="M1">不可逆动作前风险检查。M0 由 FR-507 的交接说明承担等价职责。</gate>
+      <gate id="GATE_C" tier="M0">出发前最终检查，M0 必须实现，见 FR-508。</gate>
+    </readinessGate>
+    <promptInjectionRule tier="M0">来自网页、UGC 与外部工具返回的内容一律视为不可信数据而非指令。Subagent 必须在提示中显式隔离外部内容，遇到其中包含的指令性语句应忽略并记录一条告警。</promptInjectionRule>
+  </informationGovernance>
+
+  <agentArchitecture status="confirmed">
+    <skill id="SKILL-01" name="需求访谈" tier="M0">驱动 STAGE-1 与 STAGE-2 的渐进式提问与信息补全。</skill>
+    <skill id="SKILL-02" name="包络校验" tier="M0">判定输入是否落在 M0-ENVELOPE 内并生成拒绝或收窄建议。</skill>
+    <skill id="SKILL-03" name="目的地评估" tier="M0">生成并比较候选目的地。</skill>
+    <skill id="SKILL-04" name="情报研究" tier="M0">只读检索、抽取与去重，产出 EvidenceClaim。</skill>
+    <skill id="SKILL-05" name="可信度验证" tier="M0">执行 Verification Gate 判定与冲突标注。</skill>
+    <skill id="SKILL-06" name="交通方案" tier="M0">调用 SRC-RAIL 与 SRC-FLIGHT，生成门到门可比较的往返方案。</skill>
+    <skill id="SKILL-07" name="空间聚类与骨架" tier="M0">生成半日级 Day Skeleton 与餐饮区域锚点。</skill>
+    <skill id="SKILL-08" name="住宿决策" tier="M0">调用 SRC-HOTEL，核验房型、费用与取消政策。</skill>
+    <skill id="SKILL-09" name="路线精排" tier="M0">段间 ETA、缓冲与时刻编排。</skill>
+    <skill id="SKILL-10" name="时间轴编译" tier="M0">生成 FinalTimeline 与版本，产出 DecisionLog。</skill>
+    <skill id="SKILL-11" name="任务派生" tier="M0">生成 PreparationTask 与 ReservationTicketTask 及交接说明。</skill>
+    <skill id="SKILL-12" name="旅行日助手" tier="M1">M0 不实现。</skill>
+    <skillRule>每个 Skill 是一组提示模板加输出 Schema 加所需工具集合的组合，注册到 Coordinator。Skill 不直接持有 Provider 或 MCP 客户端，一律通过服务注入获取。</skillRule>
+  </agentArchitecture>
+
+  <stateModel status="confirmed" tier="M0">
+    <entity name="SessionEvent">append-only，字段含 eventId、sessionId、seq、eventType、payload、createdAt、actor。写入 JSONL 后再更新读模型。</entity>
+    <entity name="TravelState">由事件重建的派生状态，含成员、时间、目的地、偏好、预算、约束与各阶段确认结果。</entity>
+    <entity name="DaySkeleton">半日级骨架，字段含 date、dayType、morning、afternoon、evening、intensity、mealAnchors。</entity>
+    <entity name="StaySegment">字段含 segmentId、areaHint、checkInDate、checkOutDate、nights、selectedHotelRef。M0 每个会话恒为一个。</entity>
+    <entity name="DailyRoutePlan">单日精排结果，含有序项目、段间交通方式与 ETA、缓冲。</entity>
+    <entity name="MealPlan">含区域锚点与具体餐厅候选。</entity>
+    <entity name="FinalTimeline">当前生效时间轴。</entity>
+    <entity name="FinalTimelineVersion">时间轴的历史版本，含版本号、创建时间与变更摘要。</entity>
+    <entity name="PreparationTask">出行准备任务，含标题、负责人、截止时间、状态。</entity>
+    <entity name="ReservationTicketTask">预约与票务任务。v0.7 定义七个状态轴，M0 只实现 userDecision、reservation 与 readiness 三轴，其余四轴字段存在但恒为默认值。</entity>
+    <entity name="DecisionLog">记录每次用户确认的决策、备选、理由与依据的 claimId 列表。</entity>
+    <entity name="EvidenceClaim">见 EC-001。</entity>
+    <entity name="ModelCallRecord">含 role、provider、model、tokensIn、tokensOut、costEstimate、latencyMs、ok。</entity>
+    <entity name="ToolCallRecord">含 toolName、sourceId、argsDigest、durationMs、ok、errorCode。</entity>
+    <writeRule>所有对 TravelState、FinalTimeline 与 DecisionLog 的变更必须先追加 SessionEvent 再更新读模型，且同一次用户确认涉及的多处变更必须在同一事务内完成。</writeRule>
+  </stateModel>
+
+  <nonFunctionalRequirements>
+    <nfr id="NFR-001" category="平台" tier="M0" status="confirmed">支持 Windows 10 22H2 及以上与 Windows 11 64 位，Electron 打包为可安装程序。</nfr>
+    <nfr id="NFR-002" category="性能" tier="M0" status="confirmed">应用冷启动至可交互不超过 5 秒；对话响应的首字延迟主要受 Provider 影响，系统自身开销不超过 300 毫秒。</nfr>
+    <nfr id="NFR-003" category="性能" tier="M0" status="confirmed">TIMELINE 与 SKELETON 视图在 6 天行程规模下的渲染与交互保持流畅，不出现可感知卡顿。</nfr>
+    <nfr id="NFR-004" category="可靠性" tier="M0" status="confirmed">进程崩溃或断电后重启，会话状态必须能从 JSONL 事件日志完整恢复，最多丢失最后一次未落盘的事件。</nfr>
+    <nfr id="NFR-005" category="可靠性" tier="M0" status="confirmed">任一外部数据源不可用时应用不得崩溃，必须降级并明确告知影响范围。</nfr>
+    <nfr id="NFR-006" category="可观测" tier="M0" status="confirmed">Inspector 必须可查看全部 SessionEvent、ToolCallRecord 与 ModelCallRecord，并支持按会话与时间筛选。</nfr>
+    <nfr id="NFR-007" category="可观测" tier="M0" status="confirmed">每条 EvidenceClaim 必须可从时间轴条目反查到来源引用与获取时间，路径不超过两次点击。</nfr>
+    <nfr id="NFR-008" category="成本" tier="M0" status="confirmed">界面必须展示当前会话累计 token 与估算成本。每趟旅行成本硬上限与超限阻断属 M1。</nfr>
+    <nfr id="NFR-009" category="限速" tier="M0" status="confirmed">对每个外部数据源实施本地限速与去重缓存，避免高频调用触发上游限制。</nfr>
+    <nfr id="NFR-010" category="正确性" tier="M0" status="confirmed">所有结构化模型输出必须通过 Zod 校验；未通过且修复失败的输出一律不得进入状态。</nfr>
+    <nfr id="NFR-017" category="安全" tier="M0" status="confirmed" verifiedDate="2026-08-21">API Key 与 MCP Server 密钥必须通过 Electron safeStorage 加密后存储。凭据不得出现在 SQLite 明文列、JSONL、日志、导出包与诊断信息中。
+      <rule id="NFR-017-a">使用异步 API encryptStringAsync 与 decryptStringAsync。官方已声明同步版本可能在未来版本中废弃，且异步版额外提供 isTemporarilyUnavailable，正好用于区分临时不可用与凭据永久失效。</rule>
+      <rule id="NFR-017-b">safeStorage 只能在主进程调用，且必须等 app ready 之后。Windows 上 isEncryptionAvailable() 唯一的 false 条件就是尚未 ready。</rule>
+      <rule id="NFR-017-c">解密失败一律抛异常，绝不返回乱码，因此 NFR-028 要求的"识别为凭据不可用"可实现。但 Electron 未提供 error code，只能按 message 前缀区分三种情况：未 ready（编码错误，应修代码而非提示用户重录）、密文非法（前缀非 v10 或 v11）、解密失败（跨用户或跨机器，即真正的凭据不可用）。三者必须分别处理，不得笼统归为一类。</rule>
+      <threatModel>Windows 上 DPAPI 只防同机的其他 Windows 用户，不防同一用户下运行的其他进程。同 userspace 的任意程序都能解密。因此本文件中"凭据受保护"的表述一律限定为"防同机其他 Windows 用户"，不得表述为防本机恶意软件。</threatModel>
+    </nfr>
+    <nfr id="NFR-018" category="安全" tier="M0" status="confirmed">渲染进程禁用 nodeIntegration，启用 contextIsolation，仅通过 preload 的 contextBridge 暴露白名单 IPC 通道。</nfr>
+    <nfr id="NFR-019" category="合规" tier="M0" status="confirmed">系统不得执行任何不可逆的外部动作。所有外部工具仅用于只读数据获取，具备写能力的工具必须在 ToolRegistry 层被拒绝注册。</nfr>
+    <nfr id="NFR-020" category="合规" tier="M0" status="confirmed">不绕过登录墙、验证码、反爬、付费墙或平台明确禁止的自动化限制。目标站点拒绝访问时必须放弃并转为提示用户手工查证。</nfr>
+    <nfr id="NFR-021" category="隐私" tier="M0" status="confirmed">禁止保存证件原件、照片、完整号码、MRZ 与生物识别信息。</nfr>
+    <nfr id="NFR-022" category="隐私" tier="M0" status="confirmed">发送给外部数据源的参数遵守 outboundMinimizationRule。</nfr>
+    <nfr id="NFR-023" category="可访问性" tier="M0" status="confirmed">M0 要求全键盘可达、焦点可见、不以颜色作为唯一信息载体。完整 WCAG AA 达标属 M1。</nfr>
+    <nfr id="NFR-024" category="离线" tier="M1" status="planned">离线模式与本地缓存浏览。M0 断网时明确提示不可用。</nfr>
+    <nfr id="NFR-025" category="国际化" tier="M2" status="planned">多语言界面。M0 仅简体中文。</nfr>
+    <nfr id="NFR-026" category="可维护" tier="M0" status="confirmed">八个内核服务各自独立插件文件，服务之间只通过注入与事件通信，见 CORDIS-001 的 CC-R1 与 CC-R2。</nfr>
+    <nfr id="NFR-027" category="可维护" tier="M0" status="confirmed">数据库变更必须通过带版本号的迁移脚本，禁止手工改表。</nfr>
+    <nfr id="NFR-029" category="外部依赖" tier="M0" status="confirmed" verifiedDate="2026-08-21">外部数据源调用必须串行化并限速。SRC-MAP 的 QPS 硬上限为 3，SRC-RAIL 需自行节流以免触发上游风控。ToolRegistry 层实现单一令牌桶，禁止各 Skill 各自并发调用。这是功能性要求，不是性能优化。</nfr>
+    <nfr id="NFR-030" category="外部依赖" tier="M0" status="confirmed" verifiedDate="2026-08-21">稀缺配额必须靠本地缓存维持。POI 名称到坐标与详情的映射跨会话持久化，同一 POI 只解析一次。系统必须维护本月各类外部调用的本地计数，接近配额上限时告警，达到自设上限时熔断而不是继续调用。理由是高德搜索类配额仅 5000 次每月且超额自动扣费。</nfr>
+    <nfr id="NFR-031" category="工程" tier="M0" status="confirmed" verifiedDate="2026-08-21">Electron 工程约束，均为已核验的硬性事实，违反即在 Day 1 报错。
+      <rule id="NFR-031-a">better-sqlite3 锁定 13.0.1 以上。该版本改用 N-API 并随 npm 包发布 win32-x64 预编译产物，装完即用，不需要 electron-rebuild，也不需要 Visual Studio Build Tools。此前本文件暗示需要重新编译原生模块，是错误的。</rule>
+      <rule id="NFR-031-b">better-sqlite3 必须列在 package.json 的 dependencies 而非 devDependencies。electron-vite 只把 dependencies 视为 external，放错位置会导致打包后主进程报模块找不到。</rule>
+      <rule id="NFR-031-c">数据库文件路径固定为 app.getPath('userData') 下的子目录。asar 归档只读，不能在其中写库；WAL 模式还要求所在目录可写且不在网络文件系统上。</rule>
+      <rule id="NFR-031-d">Electron 20 起 sandbox 默认开启，preload 脚本因此不能 require 任意 Node 模块。preload 必须打包为单文件（关闭其依赖外部化），否则会报 preload 加载失败。</rule>
+      <rule id="NFR-031-e">contextBridge 传值会被复制并冻结，原型链一律丢弃，不支持 Symbol，直接传 ipcRenderer 会得到空对象。必须手写白名单包装函数逐个暴露 IPC 通道，这与 NFR 的最小权限要求方向一致。</rule>
+      <rule id="NFR-031-f">MCP 官方 TypeScript SDK 的 stdio 传输内部使用 cross-spawn 并显式设 shell false，因此在 Windows 上 command 直接写 npx 即可正常解析 npx.cmd。禁止改用 shell true，那会引入命令注入面且没有必要。</rule>
+      <rule id="NFR-031-g">npx -y 首次运行会在用户机器上从 npm registry 下载整包，是分钟级且可能失败的操作。MCP 客户端必须为首次拉取设置独立的较长超时与明确的失败提示，不得按瞬时操作处理。运行环境需预装 Node.js，这是当前架构的显式前置条件。</rule>
+    </nfr>
+    <nfr id="NFR-028" category="安全" tier="M0" status="confirmed" resolves="OQ-016">凭据不可迁移，且失效必须显式。具体规则如下。
+      <rule id="NFR-028-a">凭据只存在于 safeStorage，不进入任何导出物。导出包、诊断包与日志在生成时必须执行一道显式的凭据字段剔除，而不是依赖"调用方没把它写进去"。新增导出格式时必须同步走这道剔除。</rule>
+      <rule id="NFR-028-b">safeStorage 解密失败（换机、重装系统、换 Windows 用户后的必然结果）必须被捕获并识别为"凭据不可用"，在 SETTINGS 中明确显示需要重新录入。禁止崩溃，禁止静默吞掉异常，更禁止用空 Key 或旧值继续发起外部请求。</rule>
+      <rule id="NFR-028-c">safeStorage.isEncryptionAvailable() 返回 false 时，必须拒绝保存凭据并说明原因。禁止降级为明文存储。</rule>
+      <rule id="NFR-028-d">行程数据本身不加密，因此换机后导出包与事件日志仍可正常导入与重建；仅凭据需要重录。这是本决策成立的前提，若将来对行程数据加密，OQ-016 必须重开。</rule>
+    </nfr>
+  </nonFunctionalRequirements>
+
+  <successMetrics>
+    <metric id="M-001" tier="M0">端到端完成率：在 M0-ENVELOPE 内发起的规划中，能产出通过 GATE_C 的完整时间轴的比例。目标为首次真实使用即达成一次。</metric>
+    <metric id="M-002" tier="M0">硬锚点验证率：FinalTimeline 中 anchorClass 为 HARD_LOCKED 或 CONFIRMED_EXTERNAL 的条目里，verificationStatus 为 VERIFIED 的比例。目标百分之百。</metric>
+    <metric id="M-003" tier="M0">无源事实数：时间轴中出现的具体时刻、价格与政策里没有对应 EvidenceClaim 的数量。目标为零。</metric>
+    <metric id="M-004" tier="M0">静默冲突数：存在互相矛盾的事实但未标注 CONFLICTED 的数量。目标为零。</metric>
+    <metric id="M-005" tier="M0">越权动作数：系统执行的不可逆外部动作次数。目标为零。</metric>
+    <metric id="M-006" tier="M0">真实可用性：用户是否按该行程实际出行，并在出行后判定"这份行程比我自己排的好"。这是 M0 的唯一终极判据。</metric>
+    <metric id="M-007" tier="M0">单次规划成本：从会话开始到通过 GATE_C 的累计模型估算成本，记录以便后续优化，M0 不设阈值。</metric>
+    <metric id="M-008" tier="M1">规划时长：骨架 5 分钟、完整方案 20 分钟的阈值考核。</metric>
+    <metricNote>M-009 至 M-042 的完整指标体系见 v0.7。M0 只考核上述七项，其余指标在 M1 恢复考核。</metricNote>
+  </successMetrics>
+
+  <sevenDayBuildPlan id="BUILD-001" status="confirmed" tier="M0">
+    <assumption>由用户本人配合 Codex 与 Claude 进行开发，每天有较完整的工作时段。每一天以"完成判据"收尾，判据未达成不进入下一天，改为按 descopeOrder 砍量。</assumption>
+    <workflowGuidance>
+      <item>动工前先让编码助手完整读取本 XML，并在每次新会话开始时重读 cordisContract 与 mcpDataLayer。</item>
+      <item>按天开分支或至少按天提交，保证任何一天结束时仓库处于可运行状态。</item>
+      <item>Schema 与类型先行：每天先定当天涉及的 Zod Schema 与 TypeScript 类型，再写实现，可显著降低模型产出漂移。</item>
+      <item>凡编码助手提出"顺便加个功能"的建议，一律对照 implementationTiers 检查 tier，非 M0 直接拒绝。</item>
+    </workflowGuidance>
+
+    <parallelization id="BUILD-PARALLEL" status="confirmed" tier="M0">
+      <premise>开发者可同时开多个 Codex 与 Claude 会话并使用 subagent，token 不受限。但并行只压缩得了一部分工作，用错地方会净增成本，因此本节明确划出可并行区与必须串行区。</premise>
+
+      <criticalPath>以下工作必须串行，多开不但无益反而有害，因为它们的成本来自学习曲线与整合调试，而不是敲键盘的量。
+        <item ref="BUILD-D0">环境前置。纯等待，本身就是挂机，不需要并行。</item>
+        <item ref="BUILD-D1">Cordis 内核引导与八服务依赖图。依赖未就绪时插件静默不启动、无任何日志，这类问题只能由一个人在一个上下文里连贯排查；两个会话同时改插件注册会让"到底是谁漏了 ctx.set"彻底无法定位。</item>
+        <item ref="BUILD-D1">第一条 MCP 通道。spawn、超时、stderr、进程退出与错误分类是一整套要一次想清楚的生命周期语义。</item>
+        <item ref="BUILD-D7">打包验证。asar、原生模块、依赖外部化是全新的失败面，必须独占上下文。</item>
+      </criticalPath>
+
+      <parallelizable>以下工作彼此独立，适合分派给并行会话，前提是接口已冻结。
+        <lane id="LANE-SKILL">SKILL-01 至 SKILL-12 的实现。每个 Skill 只依赖 ToolRegistry 接口与自身的 Zod Schema，相互之间不直接调用。一个会话负责一个 Skill。</lane>
+        <lane id="LANE-VIEW">各视图的前端实现。视图之间不共享状态，只读 TravelState 并发 IPC。</lane>
+        <lane id="LANE-SCHEMA">Zod Schema 与 TypeScript 类型的编写。适合最先并行，因为它是其他所有 lane 的输入。</lane>
+        <lane id="LANE-AC">AC-M0-01 至 AC-M0-35 的验收脚本与测试夹具。完全依赖已冻结的接口，可与实现同时进行。</lane>
+        <lane id="LANE-RESEARCH">外部事实核验与文档查证，例如某个 MCP 工具的真实返回结构。这是 subagent 最划算的用途，因为产出是结论而不是代码，不产生合并冲突。</lane>
+      </parallelizable>
+
+      <rules>
+        <rule id="PAR-1" priority="critical">接口先行。任何 lane 开工前，它要用到的 Zod Schema、TypeScript 类型与服务方法签名必须已经提交到主线并冻结。没冻结就并行，等来的是几个各自发明了一套类型的实现，合并成本高于串行重写。</rule>
+        <rule id="PAR-2" priority="critical">一个 lane 只允许改一个目录。跨目录改动与共享类型文件的修改只能走主线，由开发者本人执行。这是把合并冲突降到零的最简办法。</rule>
+        <rule id="PAR-3">每个并行会话开工时必须完整读取本 XML，并显式声明自己负责的 lane 与目录边界。会话之间不共享上下文，因此每个会话都会倾向于重新发明已有的抽象，靠这条约束压住。</rule>
+        <rule id="PAR-4">并行会话产出的代码由开发者本人逐个合入并跑一次全量类型检查，禁止会话之间互相合并。</rule>
+        <rule id="PAR-5">并行不改变 descopeOrder。工作量看起来变多了不等于可以把 M1 内容提前，砍量顺序与 neverCut 清单原样适用。</rule>
+      </rules>
+
+      <realisticGain>并行能把 D4 至 D6 的 Skill 与视图实现明显压缩，但压不动 D0、D1 与 D7。因此七天窗口的瓶颈仍是内核引导与打包这两段串行工作，节省下来的时间应优先用于回补 D1 的超时风险，而不是用来扩大 M0 范围。</realisticGain>
+    </parallelization>
+
+    <day id="BUILD-D0" name="环境前置（挂机，不占正式工时）" completionState="not_started" verifiedDate="2026-08-21">
+      <purpose>把纯等待、纯网络、纯注册的工作从 D1 的关键路径上摘掉。这些任务不消耗脑力，可在开工前一晚挂机完成。</purpose>
+      <task priority="critical">完成高德开放平台个人实名认证。未认证账号全部配额为零，这是唯一一件卡在外部审核、无法靠加班解决的事，必须最先做。</task>
+      <task priority="critical">配置 ELECTRON_MIRROR 后跑一次 electron-vite 官方脚手架（npm create @quick-start/electron@latest，vanilla-ts 模板，脚手架内的下载镜像选项选是），执行 npm install 并确认 npm run dev 能起来。Electron 二进制每个主版本约 100 至 200 MB，不配镜像可能直接吞掉半天。</task>
+      <task>命令行手动跑一次 npx -y 12306-mcp，把包灌进 npm 缓存并确认它真的能启动。这一步把首次网络下载从 D1 的关键路径上摘掉。</task>
+      <task>申请 RollingGo 密钥（注意必须以 mcp_ 开头，申请入口官方口径不统一，见 SRC-HOTEL 的 auth 节）。</task>
+      <task>确认开发机 Node.js 为 22 以上（better-sqlite3 13.x 与 @amap/amap-maps-mcp-server 均有此要求），且项目路径不含空格、中文与特殊字符。</task>
+      <completionCriteria>高德实名认证已提交；脚手架工程能 npm run dev 起来；12306-mcp 已在缓存中且能手动启动；两个密钥已到手。</completionCriteria>
+    </day>
+
+    <day id="BUILD-D1" name="内核与外壳" completionState="not_started">
+      <task>初始化 Electron 加 TypeScript 加 Vite 工程，配置主进程与渲染进程，启用 contextIsolation。</task>
+      <task>接入 Cordis，建立根 Context 与插件装载入口。</task>
+      <task>以空实现方式创建全部八个内核服务插件，确认注入与事件总线可用。</task>
+      <task>接入 better-sqlite3 与 WAL，建立迁移机制与初始表结构。</task>
+      <task>实现 EventLogService 的 JSONL 追加、读取与从事件重建 TravelState 的最小闭环。</task>
+      <task>实现 SETTINGS 视图与 safeStorage 凭据读写，含 NFR-028 的解密失败识别与重录引导。</task>
+      <task id="probe" priority="critical">探针任务：只打通一条 MCP 通道，即 stdio 方式的 12306-mcp，跑通 spawn、超时、stderr 接管、进程退出与错误分类，把真实返回结构存为样例 JSON。第一条通道要解决全部生命周期问题，成本是后续每条的三到五倍；后三条基本是复制粘贴，放到 D3。这是全周最高风险点。</task>
+      <task id="probe-coverage" priority="high" ref="OQ-020" movedTo="BUILD-D3">用真实目的地与日期跑一次 SRC-HOTEL 覆盖探针，记录候选数量与价格区间，作为 FR-512 来源分布展示的基线。随其余三条通道一并挪到 D3。此项已不再是设计开关：无论覆盖多寡，住宿候选一律按 FR-501 的多来源合并列表呈现，不切换主备。</task>
+      <completionCriteria>应用可启动；写入十条事件后重启，状态可完整恢复；12306-mcp 一条通道端到端跑通并有真实返回样例落盘。打包不在本日范围内，D7 才做。</completionCriteria>
+      <riskNote>实测本日原始工作量约 9 至 19 小时，一个人一天做不完，因此已做三处收敛：环境准备整体前置到 D0，MCP 通道由四条减为一条，打包验证移出本日。若第一条通道在本日仍未跑通，立即按 descopeOrder 砍量，不要顺延。</riskNote>
+    </day>
+
+    <day id="BUILD-D2" name="对话与状态机" completionState="not_started">
+      <task>实现 ProviderRuntime 单 Provider 调用、四角色模型配置与 ModelCallRecord 记账。</task>
+      <task>实现 Zod 校验与一次受约束修复重试的通用封装。</task>
+      <task>实现 SessionService 的阶段状态机，覆盖 STAGE-1 至 STAGE-5。</task>
+      <task>实现 CHAT 视图与确认卡片组件。</task>
+      <task>实现 SKILL-01 需求访谈与 SKILL-02 包络校验，跑通 STAGE-1 与 STAGE-2。</task>
+      <completionCriteria>可以通过对话完成基础信息采集，产出确认卡片，包络外输入被正确拒绝，全过程事件完整落盘且累计成本可见。</completionCriteria>
+    </day>
+
+    <day id="BUILD-D3" name="MCP 工具层" completionState="not_started">
+      <task priority="critical">按 D1 已跑通的通道模式，复制接入其余数据源：SRC-MAP、SRC-HOTEL、SRC-SEARCH。SRC-FLIGHT 已降级到 M1，不接入。同时完成 SRC-HOTEL 覆盖基线探针。</task>
+      <task priority="critical" ref="NFR-029,NFR-030">实现 ToolRegistry 层的单一令牌桶串行限速（SRC-MAP 的 QPS 上限为 3）与 POI 坐标详情的跨会话持久缓存，并接上月度调用计数与熔断。配额是硬约束，这两项不做完不算本日达成。</task>
+      <task>实现 ToolRegistry 的 MCP 客户端接入：stdio 子进程管理与 streamable-http 请求，含生命周期回收。</task>
+      <task>实现 MCP-ALLOWLIST 白名单过滤与拒绝审计。</task>
+      <task>基于 D1 的真实样例为每个工具编写返回值 Zod Schema。</task>
+      <task>实现 McpSourceAdapter，接入四个 source，实现 MCP-HEALTH 探针与降级标记。</task>
+      <task>实现限速与查询级缓存。</task>
+      <task>实现 EvidenceClaim 写入与 EVIDENCE 视图。</task>
+      <completionCriteria>四个源均可从 UI 触发真实查询并产出带来源与时效的 EvidenceClaim；手工断开任一源，系统正确降级且不崩溃；带写语义的工具被拒绝注册并可在 Inspector 中看到记录。</completionCriteria>
+    </day>
+
+    <day id="BUILD-D4" name="研究与目的地情报" completionState="not_started">
+      <task>实现 SOURCE_SUBAGENT 的只读派发与上下文隔离。</task>
+      <task>实现 SKILL-03 目的地评估，跑通 STAGE-2 的候选生成与确认。</task>
+      <task>实现 SKILL-04 情报研究与实体去重。</task>
+      <task>实现 SKILL-05 可信度验证：contentIdentity 判定、validityWindow 计算、CORROBORATED 与 CONFLICTED 标注。</task>
+      <task>实现 FR-306 的成员适配过滤与 FR-307 的线索确认清单。</task>
+      <completionCriteria>输入一个真实目的地，能产出去重后的景点与餐饮线索清单，每条带来源、证据等级与有效期；推广特征内容被正确降权；必去项的开放时间与预约要求被即时核验。</completionCriteria>
+    </day>
+
+    <day id="BUILD-D5" name="交通、骨架与住宿" completionState="not_started">
+      <task>实现 SKILL-06 交通方案：调用 SRC-RAIL 与 SRC-FLIGHT，计算门到门总时长（含地面接驳）与总费用，产出推荐与备选。</task>
+      <task>实现 FR-403 抵离硬锚点与首末日可用时长计算。</task>
+      <task>实现 SKILL-07 空间聚类与半日级 Day Skeleton 生成，含餐饮区域锚点。</task>
+      <task>实现 SKELETON 视图与用户直接调整、局部重算。</task>
+      <task>实现 SKILL-08 住宿决策：按 FR-501 从 SRC-HOTEL、SRC-SEARCH 与用户手工粘贴三条来源生成候选并合并为一份可比较列表，三者地位平等不设主备；逐条完成 FR-513 房型与人数核验、FR-514 费用构成与取消政策核验、以及与骨架的通勤联合评估。</task>
+      <task>实现 FR-512 来源分布透明度：列表显示各来源候选数量与总数，稀疏时如实告知并提供手工粘贴入口。</task>
+      <completionCriteria>能产出一份真实的往返交通推荐加备选、一份覆盖全部日期的半日级骨架、以及一份标注了来源分布的可比较住宿候选列表（正常情况下三至五条）；用户在 SKELETON 中调整一处后只有受影响部分被重算。</completionCriteria>
+      <riskNote>本日工作量最大。若时间紧张，先保证铁路方案与骨架，机票方案可延后到 D6 补。</riskNote>
+    </day>
+
+    <day id="BUILD-D6" name="精排、餐饮与时间轴" completionState="not_started">
+      <task>实现 SKILL-09 路线精排：段间 ETA、交通方式选择与 M0-BUFFER 缓冲规则。</task>
+      <task>实现 SKILL-10 时间轴编译，产出 FinalTimeline、itemClass 与 anchorClass 标注、版本与 DecisionLog。</task>
+      <task>实现 FR-504 具体餐厅选定与绕路评估。</task>
+      <task>实现 FR-516 最终 Verification Gate 与 FR-517 每日 BACKUP。</task>
+      <task>实现 TIMELINE 视图与版本切换。</task>
+      <completionCriteria>产出一份带时刻、交通方式、可见缓冲与来源可追溯的完整时间轴；存在未验证硬锚点时被显式拦截；每日均有 BACKUP 项。</completionCriteria>
+      <riskNote>时间轴编译的边界条件（跨午夜、开放时间与到达时刻冲突、缓冲叠加后溢出当日）是本周第二大风险点。优先保证不产出自相矛盾的时刻，其次才是排得漂亮。</riskNote>
+    </day>
+
+    <day id="BUILD-D7" name="任务中心与收口" completionState="not_started">
+      <task>实现 SKILL-11 任务派生：PreparationTask 与 ReservationTicketTask 及交接说明。</task>
+      <task>实现 TASKS 视图与用户回填外部办理结果。</task>
+      <task>实现 FR-508 的 GATE_C 出发前检查。</task>
+      <task>实现 FR-509 的 ICS 与 Markdown 导出。</task>
+      <task>完善 INSPECTOR 视图。</task>
+      <task>端到端跑一次自己真实的下一趟旅行，记录所有卡壳点。</task>
+      <task>打包为 Windows 安装程序。</task>
+      <completionCriteria>完成一次真实的端到端规划并导出到日历；GATE_C 能正确阻塞未完成的高优先级任务；M-002 至 M-005 四项指标达标。</completionCriteria>
+    </day>
+
+    <descopeOrder id="BUILD-CUT" status="confirmed">
+      <purpose>落后时按顺序整条砍掉，不要把每天的工作量平摊延期。前面的先砍。</purpose>
+      <cut order="1" ref="FR-504">砍具体餐厅选定，只保留 FR-408 的餐饮区域锚点。理由是找餐厅这件事用户自己在现场做反而更好。</cut>
+      <cut order="2" ref="UX-001">砍 PLAN_EVIDENCE_COMPARE 并排比较视图，证据仍可在 EVIDENCE 视图查看。</cut>
+      <cut order="3" ref="FR-402">砍备选方案，只输出一份综合最优。理由是备选的价值在有余力时才体现。</cut>
+      <cut order="4" ref="FR-509">砍 ICS 导出，只保留 Markdown。</cut>
+      <cut order="5" ref="HK-001">砍事件重放的 UI 可视化，只保留事件写入与快照恢复能力。事件日志本身绝不能砍。</cut>
+      <neverCut>
+        <item ref="NFR-019">不可逆动作禁令与只读工具白名单。</item>
+        <item ref="EC-001">EvidenceClaim 与来源可追溯。</item>
+        <item ref="HK-001">append-only 事件日志与状态恢复。</item>
+        <item ref="NFR-017">凭据加密存储。</item>
+        <item ref="M0-ENVELOPE">包络校验与超包络显式拒绝。</item>
+      </neverCut>
+    </descopeOrder>
+  </sevenDayBuildPlan>
+
+  <releasePlan>
+    <release id="R0" name="M0 七日单场景 MVP" tier="M0" status="confirmed">
+      <scope>M0-ENVELOPE 内的端到端旅行前规划，含 STAGE-1 至 STAGE-5、四个 MCP 数据源、GATE_C 与导出。</scope>
+      <exitCriteria>BUILD-D7 的完成判据全部达成，且用户完成一次真实使用。</exitCriteria>
+    </release>
+    <release id="R1" name="包络扩展与治理补齐" tier="M1" status="planned">
+      <scope>解除多目的地、异地会合、自驾、多 Stay Segment 限制；Provider fallback 与成本硬上限；第二模型复核；GATE_A 与 GATE_B；旅行日助手；离线模式；WCAG AA；Knowledge Pack；PDF 导出。</scope>
+    </release>
+    <release id="R2" name="需重新立项" tier="M2" status="planned">
+      <scope>跨平台比价匹配、专用浏览器工作区、旅行中持续监控、境外旅行、旅行后复盘与长期记忆。</scope>
+    </release>
+  </releasePlan>
+
+  <acceptanceCriteria>
+    <idDiscipline>v1.0 的 FR 编号为独立命名空间，与 v0.7 同号条目一般不同义；引用 v0.7 一律通过 seeV07 属性，且 v1.0 不再新增字母后缀编号；唯一例外是 FR-501F，它与 v0.7 完全同义，保留原号以免制造无意义的映射。</idDiscipline>
+    <criterion id="AC-M0-01" mapsTo="BUILD-D1" tier="M0">写入若干事件后强制结束进程，重启应用，TravelState 与当前阶段完整恢复。</criterion>
+    <criterion id="AC-M0-02" mapsTo="BUILD-D1" tier="M0">八个内核服务均以独立插件注册成功，任一插件卸载后其事件监听与资源被回收。</criterion>
+    <criterion id="AC-M0-03" mapsTo="BUILD-D1" tier="M0">API Key 保存后重启应用仍可用，且在 SQLite、JSONL 与日志文件中检索不到明文。</criterion>
+    <criterion id="AC-M0-04" mapsTo="BUILD-D2" tier="M0">输入"我们一家想五月去成都玩四天"，系统在不超过五轮对话内产出完整基础信息确认卡片。</criterion>
+    <criterion id="AC-M0-05" mapsTo="BUILD-D2" tier="M0">输入"想去成都和重庆两个城市"，系统明确拒绝并说明当前版本只支持单目的地，同时提供收窄选项。</criterion>
+    <criterion id="AC-M0-06" mapsTo="BUILD-D2" tier="M0">构造一次模型返回不合 Schema 的情况，系统执行一次修复重试；再次失败则标记 BLOCKED 并向用户说明，绝不写入状态。</criterion>
+    <criterion id="AC-M0-07" mapsTo="BUILD-D3" tier="M0">四个数据源在 SETTINGS 中显示连通状态；手工断网后重新探针，状态正确变为降级。</criterion>
+    <criterion id="AC-M0-08" mapsTo="BUILD-D3" tier="M0">向 ToolRegistry 提供一个包含下单类工具的 server，该工具被拒绝注册并在 Inspector 中留下记录。</criterion>
+    <criterion id="AC-M0-09" mapsTo="BUILD-D3" tier="M0">构造一次 MCP 工具返回结构变化，Schema 校验失败，该 source 被标记 SOURCE_ADAPTER_DEGRADED 且不再供给新事实。</criterion>
+    <criterion id="AC-M0-10" mapsTo="BUILD-D4" tier="M0">同一景点在三个不同来源以不同名称出现，去重后为一个实体且保留全部来源引用。</criterion>
+    <criterion id="AC-M0-11" mapsTo="BUILD-D4" tier="M0">一条明显带推广特征的内容被标记为 SUSPECTED_PROMOTION，且不单独支撑任何推荐。</criterion>
+    <criterion id="AC-M0-12" mapsTo="BUILD-D4" tier="M0">同行人含七十岁老人时，需要长时间爬坡的景点被标注体力风险或排除，理由可见。</criterion>
+    <criterion id="AC-M0-13" mapsTo="BUILD-D4" tier="M0">两个来源对同一景点开放时间给出不同答案时，标注为 CONFLICTED 并同时展示两方来源，系统不自行择一。</criterion>
+    <criterion id="AC-M0-14" mapsTo="BUILD-D5" tier="M0">往返交通推荐给出门到门总时长，且该时长包含机场或车站的地面接驳时间。</criterion>
+    <criterion id="AC-M0-15" mapsTo="BUILD-D5" tier="M0">抵达时刻晚于下午四点时，ARRIVAL_DAY 的可用时长被正确压缩，骨架不安排需要完整半日的项目。</criterion>
+    <criterion id="AC-M0-16" mapsTo="BUILD-D5" tier="M0">Day Skeleton 中同一半日内的项目地理邻近，不出现跨城折返。</criterion>
+    <criterion id="AC-M0-17" mapsTo="BUILD-D5" tier="M0">在 SKELETON 视图中修改第二天下午的安排，仅第二天及受影响的住宿评估被重算，其余日期不变。</criterion>
+    <criterion id="AC-M0-18" mapsTo="BUILD-D5" tier="M0">住宿候选给出覆盖全部住宿夜的可比较总成本，并明确是否可免费取消及最晚免费取消时间。</criterion>
+    <criterion id="AC-M0-19" mapsTo="BUILD-D5" tier="M0">四人两大两小的输入下，被推荐房型的可住人数满足要求，或不满足时被显式标注。</criterion>
+    <criterion id="AC-M0-20" mapsTo="BUILD-D6" tier="M0">时间轴中每个交通段的缓冲可见，前往机场的段缓冲不低于三十分钟。</criterion>
+    <criterion id="AC-M0-21" mapsTo="BUILD-D6" tier="M0">时间轴中不存在时刻自相矛盾的条目：后一项的开始时间不早于前一项结束时间加段间时长。</criterion>
+    <criterion id="AC-M0-22" mapsTo="BUILD-D6" tier="M0">时间轴中任一具体时刻、价格或政策均可在两次点击内追溯到 EvidenceClaim 及其来源与获取时间。</criterion>
+    <criterion id="AC-M0-23" mapsTo="BUILD-D6" tier="M0">存在未验证的硬锚点时，时间轴无法发布为正式版本，阻塞原因明确可见。</criterion>
+    <criterion id="AC-M0-24" mapsTo="BUILD-D6" tier="M0">每一天至少有一个 BACKUP 项，且 BACKUP 默认不占用时间轴时长。</criterion>
+    <criterion id="AC-M0-25" mapsTo="BUILD-D7" tier="M0">需要预约的景点生成 ReservationTicketTask，含官方渠道说明与截止时间；系统未发起任何预约请求。</criterion>
+    <criterion id="AC-M0-26" mapsTo="BUILD-D7" tier="M0">用户回填"已购票"后，对应条目 anchorClass 变为 CONFIRMED_EXTERNAL 并写入 DecisionLog。</criterion>
+    <criterion id="AC-M0-27" mapsTo="BUILD-D7" tier="M0">GATE_C 在存在未完成高优先级任务或 STALE 硬锚点时给出阻塞清单，不给出放行结论。</criterion>
+    <criterion id="AC-M0-28" mapsTo="BUILD-D7" tier="M0">导出的 ICS 可被系统日历正确导入，时刻与时间轴一致；导出文件中不含任何凭据。</criterion>
+    <criterion id="AC-M0-29" mapsTo="全周" tier="M0">整个端到端过程中，系统执行的不可逆外部动作次数为零。</criterion>
+    <criterion id="AC-M0-30" mapsTo="全周" tier="M0">整个端到端过程中，时间轴内没有来源的具体事实数量为零。</criterion>
+    <criterion id="AC-M0-31" mapsTo="BUILD-D1" tier="M0" verifies="NFR-028">模拟凭据不可解的情况（改写 safeStorage 密文或在另一 Windows 用户下启动），应用不崩溃，SETTINGS 明确显示凭据需重新录入，且期间不向任何外部数据源发起带空 Key 或旧 Key 的请求。</criterion>
+    <criterion id="AC-M0-32" mapsTo="BUILD-D7" tier="M0" verifies="NFR-028">对导出包与诊断包做全文检索，检索不到任何 Key、密钥或 safeStorage 密文片段。</criterion>
+    <criterion id="AC-M0-33" mapsTo="BUILD-D2" tier="M0" verifies="FR-107">输入一个明确超出 M0-ENVELOPE 的行程（例如两个城市或需要换酒店），系统在基础信息确认卡片阶段指出具体超出哪个维度，并输出至少含拆会话与缩小到包络内两种方案的对比卡片；对比覆盖能拿到什么、拿不到什么、用户需手工承担什么、规划质量差异四个维度；在用户未做选择前系统不自行推进。</criterion>
+    <criterion id="AC-M0-34" mapsTo="BUILD-D2" tier="M0" verifies="FR-107">在上述对比中选择拆会话，系统创建对应数量的关联子会话并写入同一 linkedSessionGroup，各子会话均落在包络内且可并列查看；所选方案、被放弃方案与理由均出现在 DecisionLog 中。</criterion>
+    <criterion id="AC-M0-35" mapsTo="BUILD-D5" tier="M0" verifies="FR-501,FR-512">住宿候选列表中同时出现来自不同来源的条目，每条标注来源与 contentIdentity，SRC-HOTEL 条目可视觉识别为 COMMERCIAL_OFFER；列表顶部显示各来源候选数量与总数；人为把 SRC-HOTEL 置为返回空时，列表明确告知该来源无结果并提供手工粘贴入口，而不是静默呈现剩余条目。</criterion>
+    <inheritedNote>AC-001 至 AC-075 的完整验收清单见 v0.7。M0 阶段以上述三十条为准；v0.7 中针对 M1 与 M2 能力的验收条目在对应阶段恢复。</inheritedNote>
+  </acceptanceCriteria>
+
+  <openQuestions>
+    <inheritedFromV07>
+      <note>v0.7 的 OQ-013 至 OQ-018 在此逐条给出处置结论，不得静默丢弃。标 obsolete 的表示前提已消失，标 deferred 的表示问题仍然成立但不在 M0 决策窗口内。</note>
+      <question id="OQ-013" status="deferred" tier="M2" priority="P2">产品采用买断、订阅还是免费 BYOK，以及离线许可证与设备迁移。M0 为自用，不涉及分发与授权，推迟到考虑对外发布时再答。</question>
+      <question id="OQ-014" status="obsolete" priority="P0">R0 首批签名 SourceAdapter 的上线顺序、可稳定读取字段与合规验收负责人。前提随 RC-001 删除自建爬虫而消失；等价问题已由 mcpDataLayer 的四个 source 与 MCP-ALLOWLIST 回答。</question>
+      <question id="OQ-015" status="deferred" tier="M1" priority="P2">App 自动更新策略与适配器紧急停用通知。M0 为本机自用、手动重装即可；对外分发时必须重新回答，届时"适配器紧急停用"应改为"MCP source 紧急禁用开关"。</question>
+      <question id="OQ-016" status="resolved" resolvedDate="2026-08-21" tier="M0" priority="P0">
+        <original>导出包与跨设备迁移的加密字段恢复问题。NFR-017 已由自建 DPAPI 改为 Electron safeStorage，而 safeStorage 密文绑定当前 Windows 用户账户，换机、重装系统或换用户后旧密文不可解。</original>
+        <decision>导出包一律不含任何凭据与加密字段；换机、重装或换用户后由用户在 SETTINGS 重新录入 Key。不引入用户口令派生密钥，不做凭据迁移。</decision>
+        <rationale>凭据是低频、易重获的资产——API Key 可在各自控制台重新复制，MCP 密钥可重新注册。为它建一套口令派生密钥与迁移流程，是用高成本机制保护低价值资产，且会引入"忘记口令导致数据不可解"这一新失败模式。safeStorage 绑定当前用户在此语境下不是缺陷而是恰当的强度。行程数据本身不加密，因此换机后导出包仍可正常导入。</rationale>
+        <normativeHome>NFR-028</normativeHome>
+        <futureNote>若将来真的需要跨设备迁移凭据（例如产品对外分发后），必须走用户口令派生密钥，绝不可把 safeStorage 密文直接搬运，因为它在目标机器上不可解。届时重开问题，不要复用本结论。</futureNote>
+      </question>
+      <question id="OQ-017" status="deferred" tier="M1" priority="P2">Bootstrap Knowledge Pack 的首批资料规模、许可范围与质量验收。随 KNOWLEDGE-001 一并推迟到 M1。</question>
+      <question id="OQ-018" status="deferred" tier="M1" priority="P2">旅行日主动助手与 FR-603 的立项门槛、数据费用与上线时间。随 STAGE-6 与 SKILL-12 一并推迟到 M1，且应在 M0 真实使用后再评估是否值得做。</question>
+    </inheritedFromV07>
+    <question id="OQ-019" status="resolved" resolvedDate="2026-08-21" priority="P0">M0-ENVELOPE 与真实第一趟旅行不一致时如何处理。
+      <decision>不扩大包络，也不硬性拒绝。改为由 Agent 出具方案对比，用户做决定。见 envelopeGuardRule 的 ENV-a 至 ENV-d 与 FR-107。</decision>
+      <rationale>扩大包络会直接冲击七天窗口，硬性拒绝则让工具在最该帮忙的时候失效。拆会话把超包络行程降解为多个包络内行程，实现成本只是会话关联，却能覆盖换酒店与双城这两个最常见的超包络场景。至于哪种代价可接受，只有用户自己知道，系统不替他判断。</rationale>
+      <implementation>ENV-SPLIT 拆会话策略与 FR-107 方案对比卡片，均为 tier="M0"。跨会话联合优化、跨段预算汇总与统一时间轴属 M1，M0 只做关联与并列查看。</implementation>
+      <residualRisk>拆会话后段与段之间的城际交通、换酒店与行李衔接由用户手工承担。若首趟旅行的段间衔接本身就复杂，实际体验会明显低于单段行程，这一点必须在对比卡片中如实说明。</residualRisk>
+    </question>
+    <question id="OQ-020" status="resolved" resolvedDate="2026-08-21" priority="P0">RollingGo 单一供应链库存覆盖不足时是否改用其他来源为主。
+      <decision>不设主备关系。SRC-HOTEL、SRC-SEARCH 与用户手工粘贴三条来源并存且地位平等，合并为一份可比较列表交用户选择。见 FR-501 与 FR-512。</decision>
+      <rationale>原问题预设了一个"选哪条来源为主"的设计开关，而这个开关本身是多余的。三条来源各有各的盲区，合并呈现比择一为主更稳，也不需要在 D5 之前做一次不可逆的架构决定。这样 D1 探针的结果从"决定设计走向"降级为"提供来源分布信息"，把一个阻塞性决策变成了非决策。</rationale>
+      <implementation>FR-501 合并候选列表，FR-512 来源分布透明度。SRC-HOTEL 条目标注 COMMERCIAL_OFFER 并与其他来源视觉区分。</implementation>
+      <residualRisk>三条来源都稀疏时，列表本身会很短。FR-512 要求此时如实告知并提示用户手工粘贴补充，禁止把稀疏列表静默呈现为全部选项。</residualRisk>
+      <probeStillRequired>D1 探针仍必须用真实目的地与日期跑一次，但目的变为记录各来源的候选数量与价格区间，作为 FR-512 展示的基线，而不再是设计开关的触发条件。</probeStillRequired>
+    </question>
+    <question id="OQ-021" status="open" priority="P1">12306-mcp 为非官方实现且无 SLA。若在开发期间失效，是接受降级为用户粘贴车次，还是投入时间寻找替代方案？建议接受降级，因为购票本来就必须用户自己完成。</question>
+    <question id="OQ-022" status="resolved" resolvedDate="2026-08-21" priority="P1">高德开放平台的免费额度是否足够支撑一次完整规划的调用量。
+      <decision>够用，但瓶颈不在路径规划而在搜索。见 SRC-MAP 的 quota 节：个人实名认证账号路径规划类 150000 次每月，搜索类三工具共享 5000 次每月，QPS 上限 3。按单次三日规划约消耗 20 次搜索估算，每月约 250 次完整规划，个人自用绰绰有余。</decision>
+      <residualRisk>真正的风险是超额不拒绝服务而是自动扣费，以及未实名认证时全部配额为零。前者由 NFR-030 的本地计数与熔断兜住，后者前置到 BUILD-D0 完成。QPS 3 的限制由 NFR-029 串行限速兜住。</residualRisk>
+      <supersedes>原问题设定的"D1 探针时记录调用次数"已无必要，配额数字已由官方文档核实，不需要实测反推。</supersedes>
+    </question>
+    <question id="OQ-023" status="open" priority="P2">四个模型角色在 M0 是否全部使用同一个模型？建议 EXTRACTION 用便宜快速的模型，PLANNING 用强推理模型，可显著降低成本且不增加复杂度。</question>
+    <question id="OQ-024" status="resolved" resolvedDate="2026-08-21" priority="P2">Day 5 工作量偏高。
+      <decision>已由本轮减法自然消解：SRC-FLIGHT 降级为 M1 后 D5 不再有机票方案实现，同时 BUILD-PARALLEL 允许 D4 至 D6 的 Skill 与视图工作并行推进。不需要额外挪动。</decision>
+    </question>
+  </openQuestions>
+
+  <nextBacklog>
+    <item id="NEXT-010" status="resolved" priority="P0">OQ-019 与 OQ-020 已于 2026-08-21 决议（拆会话对比、多来源合并列表），不再构成开工前置条件。可直接开始 BUILD-D1。</item>
+    <item id="NEXT-011" status="open" priority="P1">在 D1 探针完成后，把四个 MCP 源的真实返回样例结构回写到本文件的 mcpDataLayer，供后续会话直接使用而无需重新探测。</item>
+    <item id="NEXT-012" status="open" priority="P1">每天收工时更新对应 day 的 completionState 与 changeLog，保证跨会话可续。</item>
+    <item id="NEXT-013" status="open" priority="P2">M0 交付后，基于真实使用中的卡壳点重排 M1 优先级，而不是照搬 v0.7 的原有顺序。</item>
+  </nextBacklog>
+
+  <changeLog>
+    <version number="1.0.0" date="2026-08-21">
+      <change>确立 M0/M1/M2 三级实施分层，全文加 tier 属性，明确 M0 阶段不得实现 M1/M2 分支。</change>
+      <change>新增 realityCheck，记录六条从 v0.7 收缩到 v1.0 的判断依据与解决方案。</change>
+      <change>新增 m0ScenarioEnvelope，锁定单出发地、单目的地、三至六天、二至六人、单 Stay Segment 的场景包络与超包络显式拒绝规则。</change>
+      <change>新增 mcpDataLayer，以 12306-mcp、RollingGo 酒店与机票 MCP、高德 MCP 及通用搜索五个来源替代 v0.7 的自建平台 SourceAdapter；新增 MCP-ALLOWLIST 只读工具硬白名单与 MCP-HEALTH 健康探针。</change>
+      <change>删除 BROWSER-001 专用旅行浏览器工作区整个支柱，含五小时登录态、按域授权、Cookie 隔离、截图脱敏与签名适配器包；PERM-001 的 SESSION_APPROVAL 档在 M0 无适用场景故不实现。</change>
+      <change>新增 cordisContract 规范性附录，固定 Cordis 的 API 子集、使用规则与事件目录，防止编码助手幻觉不存在的 API。</change>
+      <change>新增 sevenDayBuildPlan，含七天任务、完成判据、风险点与 descopeOrder 砍量顺序及五项绝不可砍清单。</change>
+      <change>ROUTER-001 的 fallback chain、成本硬上限与第二模型复核降级为 M1，数据结构保持最终形态不变。</change>
+      <change>NFR-017 由自建 DPAPI 原生模块改写为 Electron safeStorage，安全属性等价。该改动引出跨设备迁移问题，见 OQ-016。</change>
+      <change>FR-501F 跨平台三级匹配移至 M2；FR-401 自驾、FR-404 异地会合、FR-511 多 Stay Segment、FR-515 特殊日型移至 M1。</change>
+      <change>ReservationTicketTask 七轴状态在 M0 只实现三轴；GATE_A 与 GATE_B 移至 M1，仅保留 GATE_C。</change>
+      <change>新增 PR-010 诚实拒绝优于降质输出原则；新增 M0-BUFFER 缓冲规则与 promptInjectionRule。</change>
+      <change>验收清单收敛为 AC-M0-01 至 AC-M0-32，逐条映射到七天计划中的具体某一天。</change>
+      <change>OQ-016 已决议（2026-08-21）：导出包不含凭据，换机重录，不做凭据迁移。结论落为 NFR-028 四条规范性规则，并由 AC-M0-31 与 AC-M0-32 验证。</change>
+      <change>OQ-019 已决议（2026-08-21）：超出 M0-ENVELOPE 时不硬性拒绝，改为出具方案对比由用户决定。新增 envelopeGuardRule 的 ENV-a 至 ENV-d、ENV-SPLIT 拆会话策略与 FR-107，并重写 PR-010 为"以对比而非拒绝的方式呈现能力边界"。由 AC-M0-33 与 AC-M0-34 验证。M0 只做会话关联与并列查看，跨会话联合优化、跨段预算汇总与统一时间轴推迟到 M1。</change>
+      <change>OQ-020 已决议（2026-08-21）：住宿候选不设主备来源，SRC-HOTEL、SRC-SEARCH 与用户手工粘贴三条并存且地位平等，合并为一份可比较列表交用户选择。重写 FR-501、新增 FR-512 来源分布透明度、改写 SRC-HOTEL 的覆盖不足缓解措施。由 AC-M0-35 验证。D1 探针保留，但目的从触发设计切换降级为记录来源分布基线，相应新增 BUILD-D1 的 probe-coverage 任务。</change>
+      <change>验收清单由 AC-M0-32 扩展至 AC-M0-35。NEXT-010 关闭：OQ-019 与 OQ-020 不再构成 BUILD-D1 的开工前置条件。</change>
+      <change date="2026-08-21" type="外部文档核验">对 Cordis、四个 MCP 数据源与 Electron 技术栈做了一轮真实文档核验，以下为纠错。此轮的净效果是范围收缩，不新增任何产品能力。</change>
+      <change type="纠错">cordisContract 钉定 cordis@3.18.1 并按该版本重写。原文中的 ctx.provide 在 3.x 已弃用，改为 ctx.set；Plugin 概念补上类插件路径；ctx.using 标为弃用旧名。最严重的一处：原 CC-R4 未钉版本，而 cordis@4 已删除 dispose 事件，同样的析构代码在 v4 上既不报错也永不触发，会静默泄漏包括 MCP 子进程在内的全部资源，现已写明版本陷阱。另删去"API 面较小"的错误描述、把定时器移出自动回收范围、补上依赖未就绪时静默不启动的调试陷阱。CC-R6 由"不一致时自行改本节"改为事件类型声明合并规则。</change>
+      <change type="减法">eventCatalog 删去 model/called 与 source/degraded 两条。前者纯遥测无 M0 消费方，后者与 MCP-001 的降级标记重复，且每条事件都要写一份类型声明样板。</change>
+      <change type="减法">SRC-FLIGHT 由 M0 降级为 M1，status 改为 descoped。核验发现其仓库已 404，供应方最新文档已删除机票端点，schema 无法验证。M0 机票改走用户手工粘贴通道，复用既有粘贴能力，零新增工作量。同时在 SRC-RAIL 补注：12306 网站虽有空铁联运售票，但 12306-mcp 的八个工具全为铁路查询，不提供任何机票能力。</change>
+      <change type="纠错">SRC-MAP 的"官方 SSE 端点"是错误信息，高德已于 2026-03-17 下线该方案，改为 streamable-http 且 key 走 URL query。本地包名补上 @amap 作用域前缀。新增 quota 节记录真实配额：搜索类三工具共享 5000 次每月、QPS 上限 3、未实名认证配额为零、超额自动扣费。实名认证前置到 D0。</change>
+      <change type="纠错">SRC-HOTEL 的下单支付工具风险由 high 降为 medium 并改写描述：这些工具仅存在于 OAuth 模式，API Key 模式端点只暴露三个只读工具，白名单保留为纵深防御而非阻止已暴露能力。新增 high 级风险：供应方采用返佣加价模式，返回价格可能非中立市场价。searchHotels 参数补全并纠正 starRatings 为区间而非枚举列表。仓库地址补注已有更新版本。</change>
+      <change type="纠错">SRC-RAIL 新增 high 级结构性风险：该 server 靠正则匹配 12306 首页 HTML 构建车站索引，页面一变即初始化失败，2026 年 6 月与 7 月各发生过一次，应按周期性中断规划而非稳定依赖。</change>
+      <change type="新增安全边界">MCP-ALLOWLIST 补一条：唤端类工具按非只读处理一律拒绝注册。高德官方远程端点提供生成专属地图、导航、打车三项唤端能力，可能触发打车下单，落在 PR-008 禁令内；本地 stdio 包不含这三项，这是优先选用本地方式的理由。</change>
+      <change type="纠错">NFR-017 改用异步 safeStorage API（同步版官方已声明可能废弃），补上三种异常的区分规则，并把威胁模型如实降级：Windows DPAPI 只防同机其他 Windows 用户，不防同一用户下的其他进程。</change>
+      <change type="纠错">新增 NFR-029 串行限速、NFR-030 配额缓存与熔断、NFR-031 Electron 工程七条硬约束。其中 NFR-031-a 推翻了此前"必须 electron-rebuild"的暗示：better-sqlite3 13.x 随包发预编译产物，装完即用，省下 VS Build Tools 与二至四小时。另补 preload 因 sandbox 默认开启必须打包为单文件、contextBridge 传值限制、MCP SDK 已用 cross-spawn 处理 Windows npx 解析、npx 首次拉包需长超时等已核验事实。</change>
+      <change type="减法">BUILD-D1 实测原始工作量约 9 至 19 小时，一天做不完，作三处收敛：新增 BUILD-D0 挂机日承接全部环境前置与实名认证；MCP 通道由四条减为一条（第一条通道成本是后续的三至五倍，其余挪到 D3）；打包验证移出 D1。D3 相应承接其余数据源接入与限速缓存实现。</change>
+      <change type="新增">新增 BUILD-PARALLEL 并行编排节。划出必须串行的关键路径（D0、D1 内核与首条通道、D7 打包）与五条可并行 lane，并规定接口先行、一个 lane 只改一个目录等五条纪律。明确说明并行压不动内核引导与打包，节省的时间应回补 D1 风险而不是扩大 M0 范围。</change>
+      <change>成功指标收敛为 M-001 至 M-008，其中 M-006 真实可用性为唯一终极判据。</change>
+      <change>需求编号治理。v1.0 的 FR 编号是独立命名空间，按 STAGE-1 至 STAGE-7 重排，与 v0.7 的同号条目一般不同义；引用 v0.7 必须通过 seeV07 属性，正文中不得裸写 v0.7 编号。修正一处起草缺陷：v1.0 原先复用了 v0.7 的字母后缀编号 FR-409A、FR-409H、FR-501A、FR-501B、FR-501C、FR-502B、FR-505B、FR-505C，但含义与 v0.7 不同，构成误读风险。现统一改为新号段并挂载 seeV07 指回 v0.7 的真正对应项：FR-409A 改为 FR-510（seeV07 FR-409F、FR-409H）、FR-409H 改为 FR-511（FR-409G）、FR-501A 改为 FR-512（v0.7 无对应，为 v1.0 新增）、FR-501B 改为 FR-513（FR-501G）、FR-501C 改为 FR-514（FR-501H、FR-501J）、FR-502B 改为 FR-515（FR-502B 的子集）、FR-505B 改为 FR-516（FR-501L、FR-505L）、FR-505C 改为 FR-517（FR-502I）。FR-501F 与 v0.7 同义，保留原号。此后 v1.0 一律不再使用字母后缀编号，字母后缀是 v0.7 的子项约定。此前新增的 FR-410、FR-506 至 FR-509 在 v0.7 中未被占用，不构成冲突。</change>
+      <change>openQuestions 分为两段：v0.7 的 OQ-013 至 OQ-018 逐条给出 obsolete 或 deferred 处置结论（其中 OQ-016 因 NFR-017 改用 safeStorage 而重新成为 P0 未决项），新增 OQ-019 至 OQ-024 六条 M0 实施期问题。</change>
+    </version>
+    <inheritedVersions>0.1.0 至 0.7.0 的完整变更记录见 intelligent-travel-agent-prd-v0.7.xml。</inheritedVersions>
+  </changeLog>
+</productRequirementsDocument>

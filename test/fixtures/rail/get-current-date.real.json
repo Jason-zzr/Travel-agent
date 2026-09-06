@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-08-22T07:12:04.587Z",
+  "package": "12306-mcp@0.3.10",
+  "tool": "get-current-date",
+  "arguments": {},
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "2026-08-22"
+      }
+    ]
+  }
+}

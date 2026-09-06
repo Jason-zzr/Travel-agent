@@ -1,0 +1,1487 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<productRequirementsDocument id="intelligent-travel-agent-prd" version="0.6.0" language="zh-CN">
+  <metadata>
+    <title>智能旅行规划 Agent 产品需求文档</title>
+    <shortTitle>智能旅行规划 Agent PRD</shortTitle>
+    <documentType>Product Requirements Document</documentType>
+    <createdDate>2026-08-20</createdDate>
+    <lastUpdatedDate>2026-08-20</lastUpdatedDate>
+    <status>需求梳理中</status>
+    <owner>用户</owner>
+    <scopeStatement>本版本完整记录截至“旅行中局部动态重排与变更对比”已经确认的需求；确认旅行中状态更新完全可选、默认不持续定位、不自动判断到达或完成，并采用按次旅行开启、高影响对象限定、三级提醒、事件去重与用户最终决策机制。FR-603 以是否可能波及次日已确认锚点区分小缺口与大缺口，动态生成一至三个候选，展示变更与代价，并在用户确认后通过新时间轴版本、DecisionLog 与当前时间轴同步写回。</scopeStatement>
+  </metadata>
+  <continuationContext>
+    <purpose>用于在新对话中恢复需求上下文并继续完善产品。</purpose>
+    <instructionsForNextConversation>
+      <instruction order="1">读取本 XML 全文，以 status="confirmed" 的内容作为已经确认的需求。</instruction>
+      <instruction order="2">除非用户明确提出修改，否则不要重新设计或覆盖已经确认的提问顺序与流程。</instruction>
+      <instruction order="3">从 nextWorkItem 指定的节点继续逐层拆分。</instruction>
+      <instruction order="4">新增讨论完成后，更新对应节点状态、文档版本、lastUpdatedDate 与 changeLog。</instruction>
+      <instruction order="5">区分 confirmed、proposed、planned 与 open 四种状态，不能把建议自动视为用户已经确认。</instruction>
+    </instructionsForNextConversation>
+    <currentProgress>
+      <completedStage ref="STAGE-1">基础信息采集</completedStage>
+      <completedStage ref="STAGE-2">旅行目标、偏好、预算与目的地筛选</completedStage>
+      <completedStage ref="STAGE-3">多平台攻略搜索、信息校验与目的地情报</completedStage>
+      <completedStage ref="STAGE-4">交通、行程骨架、住宿区域与住宿夜数联合决策</completedStage>
+      <completedStage ref="STAGE-5">具体住宿、逐日行程、完整时间轴及出发前任务中心</completedStage>
+      <completedStage ref="STAGE-6">旅行中执行、动态验证与局部重排</completedStage>
+      <confirmedRequirement ref="FR-601">当日行程助手</confirmedRequirement>
+      <confirmedRequirement ref="FR-602">动态验证与有限监控</confirmedRequirement>
+      <confirmedRequirement ref="FR-603">局部动态重排与变更对比</confirmedRequirement>
+    </currentProgress>
+    <nextWorkItem ref="NEXT-005" status="open">
+      <name>数据访问方案与 Verification 数据契约</name>
+      <followedBy>首版范围与 Agent、Skill、插件组合架构</followedBy>
+    </nextWorkItem>
+    <suggestedResumePrompt>请读取这份 XML PRD，将 confirmed 内容视为已确认需求，从 NEXT-005“数据访问方案与 Verification 数据契约”继续逐层拆分；不要重做已经确认的 FR-601、FR-602 与 FR-603，也不要恢复已删除的独立安全应急模块。</suggestedResumePrompt>
+  </continuationContext>
+  <executiveSummary status="confirmed">
+    <productDefinition>一个以 Agent 为核心、面向个人及多人旅行场景的智能旅行决策系统。系统通过逐步提问获得出发地、目的地意向、同行人员、时间、偏好和预算，再利用多来源实时信息完成目的地筛选、攻略验证、交通比较、半日级行程骨架、住宿夜数与区域联合规划、具体住宿与房型比价、可执行逐日行程，以及预约、票务、证件与出发前任务管理。</productDefinition>
+    <coreValue>不是生成一篇看起来丰富的通用攻略，而是根据同行成员的真实约束和多平台证据，联合决定“哪天去哪、在哪个区域吃饭、当晚住哪里、住几晚、订什么房型、哪些事项必须由谁在何时办理”，形成有证据、可解释、可执行并能持续调整的旅行方案。</coreValue>
+    <recommendedProductShape status="proposed">采用“旅行规划 Agent + 专业 Skills + 外部数据插件或工具”的组合架构。Agent 负责对话、状态管理、决策和编排；Skills 固化分析方法；插件或工具获取攻略、地图、交通、天气、票务等实时数据。</recommendedProductShape>
+  </executiveSummary>
+  <problemDefinition status="confirmed">
+    <primaryProblem>用户在旅行前需要同时处理人员、时间、目的地、攻略、交通、住宿、预算、旺季和路线等大量相互依赖的信息，难以全面规划并做出适合全体成员的选择。</primaryProblem>
+    <painPoints>
+      <painPoint id="PP-001">单人、朋友和家庭旅行的需求不同，带老人或儿童时还需考虑年龄、体力、健康和照护条件。</painPoint>
+      <painPoint id="PP-002">多人假期不一致，需要找出共同时间并计算真正可用于游玩的天数。</painPoint>
+      <painPoint id="PP-003">用户通常不知道在可用时间、预算和同行条件下哪些地区真正可行。</painPoint>
+      <painPoint id="PP-004">小红书、抖音和 B 站等平台内容分散、重复、可能过时或含商业推广，难以验证。</painPoint>
+      <painPoint id="PP-005">飞机、高铁和自驾不能只比较票面价格，还应比较门到门耗时、舒适度和风险。</painPoint>
+      <painPoint id="PP-006">景点、交通、住宿区域和每天路线相互影响，人工组合容易绕路或强度失衡。</painPoint>
+      <painPoint id="PP-007">旺季、排队、天气、闭园和延误会让静态攻略无法执行。</painPoint>
+    </painPoints>
+  </problemDefinition>
+  <productGoals>
+    <goal id="G-001" priority="P0" status="confirmed">通过渐进式提问快速形成完整、结构化的旅行需求状态。</goal>
+    <goal id="G-002" priority="P0" status="confirmed">优先满足硬性约束，再在预算、体验、舒适度和群体满意度之间优化。</goal>
+    <goal id="G-003" priority="P0" status="confirmed">将多平台攻略转化为去重、可追溯、带可信度的结构化情报。</goal>
+    <goal id="G-004" priority="P0" status="confirmed">输出针对当前同行成员的目的地、交通和住宿决策理由。</goal>
+    <goal id="G-005" priority="P1" status="confirmed">生成可以实际执行的逐日时间轴、出发前任务与备选方案。</goal>
+    <goal id="G-006" priority="P1" status="confirmed">在用户请求查看调整方案后，根据已知动态事实和次日已确认锚点影响生成有边界、可比较、可失效的局部重排候选；候选不自动应用，用户确认后才以新版本写回当前时间轴。</goal>
+    <goal id="G-007" priority="P2" status="planned">沉淀用户长期偏好、多人协作与旅行后复盘能力。</goal>
+  </productGoals>
+  <nonGoals status="proposed">
+    <item>首个版本不直接代替用户完成支付或不可逆预订。</item>
+    <item>系统不提供医疗诊断，仅将用户主动提供的功能性限制用于旅行适配。</item>
+    <item>系统不保证第三方平台所有内容均可访问，应通过合规 API、公开搜索或授权浏览器能力获取。</item>
+    <item>系统不以内容数量作为质量指标，不应简单拼接大量攻略链接。</item>
+    <item status="confirmed">R0 完全禁止上传或保存护照、身份证、签证页等证件原件、照片、完整号码或 MRZ；只在规则判断确有必要时条件询问最小化结构化事实。</item>
+    <item status="confirmed">R0 不建设通用行李产品线，不生成衣物、天气穿搭、随身/托运行李分配、包袋重量、洗衣、共享物品或购物清单。</item>
+    <item status="confirmed">只有用户主动说明轮椅、婴儿车、医疗设备或特殊运动装备等会影响交通、入境或活动可行性的物品时，才由对应模块进行条件核验。</item>
+  </nonGoals>
+  <targetUsers status="confirmed">
+    <segment id="U-001">
+      <name>独自旅行用户</name>
+      <needs>快速发现目的地、控制预算、获得安全和路线建议。</needs>
+    </segment>
+    <segment id="U-002">
+      <name>情侣或朋友出行</name>
+      <needs>协调时间、兴趣、预算和旅行节奏。</needs>
+    </segment>
+    <segment id="U-003">
+      <name>家庭及亲子出行</name>
+      <needs>兼顾儿童年龄、午休、照护、酒店房型和适龄项目。</needs>
+    </segment>
+    <segment id="U-004">
+      <name>带老人出行</name>
+      <needs>控制步行、爬坡、换乘和高海拔风险，增加休息与医疗便利性。</needs>
+    </segment>
+    <segment id="U-005">
+      <name>异地成员共同出行</name>
+      <needs>计算共同时间、会合方式和多人抵达差。</needs>
+    </segment>
+  </targetUsers>
+  <productPrinciples status="confirmed">
+    <principle id="PR-001">一次只询问一个主要决策问题，使用快捷选项加自由输入，避免长表单轰炸。</principle>
+    <principle id="PR-002">不重复询问已经获得的信息；仅在缺失、冲突或高影响条件下追问。</principle>
+    <principle id="PR-003">先记录用户意向，再进行可行性判断；不要在信息不足时过早否定。</principle>
+    <principle id="PR-004">区分硬性约束、柔性偏好和可协商变量。</principle>
+    <principle id="PR-005">每个推荐都要解释适用原因、代价、风险和数据来源。</principle>
+    <principle id="PR-006">涉及营业、价格、票务、交通、天气和法规的事实必须带查询时间并优先验证最新官方信息。</principle>
+    <principle id="PR-007">用户可随时确认、修改、跳过或撤销某个条件，系统只重算受影响部分。</principle>
+    <principle id="PR-008">Agent 负责检索、验证、比较、分析、规划和给出建议；用户保留最终选择、确认、购买、预约和支付决定。未经用户明确授权不得替用户完成不可逆动作。</principle>
+    <principle id="PR-009">所有会影响行程可执行性的动态数据在进入推荐或最终时间轴前必须经过 Verification Gate；已验证事实、交叉印证体验、估计值与未验证信息必须明确区分。</principle>
+  </productPrinciples>
+  <lifecycle status="confirmed">
+    <phase id="LIFE-1" name="旅行前">
+      <capability>成员与时间协调</capability>
+      <capability>目的地发现、多平台情报研究与可信度核验</capability>
+      <capability>交通、半日级行程骨架、餐饮区域锚点与住宿夜数联合决策</capability>
+      <capability>具体住宿、房型、套餐比价与预订风险判断</capability>
+      <capability>每日路线精排、具体餐饮、预约、购票和出行准备</capability>
+      <capability>按负责人、截止时间和 recheckAt 管理预约、票务、证件与出发前 Readiness</capability>
+    </phase>
+    <phase id="LIFE-2" name="旅行中" status="confirmed">
+      <capability status="confirmed">非强制打卡的当日行程助手</capability>
+      <capability status="confirmed">按次开启的高影响动态验证与有限监控</capability>
+      <capability status="confirmed">由用户决定是否进入、按缺口大小控制范围并提供变更代价对比的局部动态重排</capability>
+    </phase>
+    <phase id="LIFE-3" name="旅行后" status="planned">
+      <capability>费用记录和多人结算</capability>
+      <capability>旅行复盘</capability>
+      <capability>长期偏好记忆</capability>
+    </phase>
+  </lifecycle>
+  <endToEndFlow status="confirmed">
+    <step order="1" ref="STAGE-1">出发地点 → 目的地区范围 → 出游人员 → 出游时间 → 基础信息确认</step>
+    <step order="2" ref="STAGE-2">旅行目标与偏好 → 预算 → 目的地筛选条件 → 候选目的地 → 用户确认</step>
+    <step order="3" ref="STAGE-3">补充已有线索 → 多来源搜索 → 提取去重 → 可信度验证 → 用户适配 → 景点/餐饮/住宿线索确认</step>
+    <step order="4" ref="STAGE-4">交通约束 → 往返交通 → 当地交通策略 → 景点粗粒度空间聚类 → 上午/下午/晚间 Day Skeleton → 餐饮区域锚点 → 住宿区域与夜数联合规划 → Stay Segment</step>
+    <step order="5" status="confirmed" confirmedThrough="FR-505">具体住宿与房型 → 住宿 Offer Verification Gate → 每日景点路线精排 → 具体餐厅与餐饮安排 → 最终 Verification Gate → 完整时间轴 → 预约/票务/证件任务 → 用户外部办理与结果回填 → 出发前 Readiness Gate</step>
+    <step order="6" status="confirmed" confirmedThrough="FR-603">当日行程信息 → 用户可选状态回填 → 高影响动态验证 → 三级提醒 → 用户决定进入局部重排 → 缺口分级 → 一至三个候选与代价对比 → 用户确认后版本化写回</step>
+    <step order="7" status="planned">费用结算 → 旅行复盘 → 长期记忆</step>
+  </endToEndFlow>
+  <functionalRequirements>
+    <stage id="STAGE-1" name="基础信息采集" status="confirmed" priority="P0">
+      <entryCondition>用户开始创建新的旅行计划。</entryCondition>
+      <questionOrder immutableUnlessUserChanges="true">
+        <node order="1" ref="FR-101">出发地点</node>
+        <node order="2" ref="FR-102">目的地区范围</node>
+        <node order="3" ref="FR-103">出游人员信息</node>
+        <node order="4" ref="FR-104">出游时间</node>
+      </questionOrder>
+      <requirement id="FR-101" name="采集出发地点" status="confirmed">
+        <agentPrompt>这次旅行准备从哪里出发？请告诉我城市或地区。如果同行人从不同城市出发，也可以一起告诉我。</agentPrompt>
+        <fields>
+          <field name="countryOrRegion" required="conditional">国家或地区</field>
+          <field name="city" required="true">主要出发城市</field>
+          <field name="district" required="false">更精确区域</field>
+          <field name="multipleOrigins" required="true">是否多人异地出发</field>
+          <field name="originByMember" required="conditional">每位成员的出发城市</field>
+        </fields>
+        <rules>
+          <rule>首次只要求主要城市；附近机场、高铁站和可接受接驳距离在交通阶段补充。</rule>
+          <rule>如果后续发现多人异地出发，回填每位成员出发地，不重做整个基础流程。</rule>
+        </rules>
+      </requirement>
+      <requirement id="FR-102" name="采集目的地区意向" status="confirmed">
+        <agentPrompt>这次旅行对目的地有没有初步想法？</agentPrompt>
+        <options>
+          <option code="SPECIFIC">已有明确国家、城市、地区或景区</option>
+          <option code="REGION">只有大概范围</option>
+          <option code="DOMESTIC_OUTBOUND">只确定国内或出境倾向</option>
+          <option code="UNDECIDED">没有想法，希望 Agent 推荐</option>
+        </options>
+        <rules>
+          <rule>本节点只记录目的地意向，不在人员和时间信息缺失时确定最终目的地。</rule>
+          <rule>允许记录必去、排除、多目的地与国内外倾向。</rule>
+          <rule>用户没有目的地时直接记录为待推荐，不立即插入大量兴趣问题。</rule>
+        </rules>
+      </requirement>
+      <requirement id="FR-103" name="采集出游人员信息" status="confirmed">
+        <agentPrompt>这次一共多少人出行？分别有多少位成年人、老人和儿童？</agentPrompt>
+        <fields>
+          <field name="total">总人数</field>
+          <field name="relationshipType">独自、情侣、朋友、家庭、亲子、多家庭或团体</field>
+          <field name="adultCount">成年人数</field>
+          <field name="elderlyCount">老人数</field>
+          <field name="childCount">儿童数</field>
+          <field name="ageByMember">关键成员年龄</field>
+          <field name="functionalConstraints">影响旅行的功能性限制</field>
+          <field name="careRequirements">婴儿车、儿童座椅、午休、轮椅等照护需求</field>
+        </fields>
+        <conditionalQuestions>
+          <question condition="包含老人">询问大概年龄，以及是否不能久走、爬坡、长途乘车或前往高海拔地区。</question>
+          <question condition="包含儿童">询问儿童年龄，以及是否需要婴儿车、儿童座椅、午休或其他照护。</question>
+          <question condition="多人出行">确认是否全部从同一城市出发。</question>
+        </conditionalQuestions>
+        <privacyRule>只询问与旅行决策直接相关的功能性限制，不强制用户提供疾病诊断。</privacyRule>
+      </requirement>
+      <requirement id="FR-104" name="采集出游时间" status="confirmed">
+        <agentPrompt>这次旅行的时间已经确定了吗？</agentPrompt>
+        <modes>
+          <mode code="FIXED">日期已经确定</mode>
+          <mode code="APPROXIMATE">只有月份、假期或季节等大概时间</mode>
+          <mode code="DURATION_ONLY">只知道可出行天数</mode>
+        </modes>
+        <fields>
+          <field name="earliestDeparture">最早出发时间</field>
+          <field name="latestReturn">最晚返回时间</field>
+          <field name="preferredPeriod">大概月份、假期或季节</field>
+          <field name="minimumDays">最少天数</field>
+          <field name="maximumDays">最多天数</field>
+          <field name="flexibility">是否可前后调整及浮动范围</field>
+          <field name="availabilityByMember">每位成员可用时间</field>
+        </fields>
+        <rules>
+          <rule>区分总假期、往返交通时间和有效游玩时间。</rule>
+          <rule>多人时间不一致时计算最长共同窗口，并标记无法完全重合的成员。</rule>
+        </rules>
+      </requirement>
+      <requirement id="FR-105" name="基础信息确认与可行性初检" status="confirmed">
+        <behavior>用确认卡片汇总出发地、目的地意向、人员、关键限制和时间，允许逐项修改。</behavior>
+        <completionCriteria>
+          <criterion>至少有一个明确出发城市。</criterion>
+          <criterion>已获得目的地或目的地区意向。</criterion>
+          <criterion>已知总人数及关键成员类型。</criterion>
+          <criterion>已知日期、时间范围或可出行天数。</criterion>
+          <criterion>老人、儿童等关键限制完成必要确认。</criterion>
+          <criterion>用户确认汇总信息。</criterion>
+        </completionCriteria>
+        <conflictExamples>
+          <example>只有两天时间但希望从中国前往欧洲。</example>
+          <example>包含行动不便老人但指定高强度徒步地区。</example>
+          <example>共同假期很短但计划跨越多个城市。</example>
+        </conflictExamples>
+        <conflictBehavior>说明冲突及影响，提供修改时间、地区、预算或强度的选项，不直接否定用户。</conflictBehavior>
+      </requirement>
+      <exitCondition>基础信息完整、完成初检并经用户确认。</exitCondition>
+    </stage>
+    <stage id="STAGE-2" name="旅行目标、偏好、预算与目的地筛选" status="confirmed" priority="P0">
+      <requirement id="FR-201" name="旅行目标优先级" status="confirmed">
+        <agentPrompt>这次旅行最希望获得什么样的体验？如果只能优先满足三项，最看重哪些？</agentPrompt>
+        <options>放松度假、陪伴家人、亲子体验、朋友聚会、情侣旅行、美食探索、自然风景、历史人文、购物娱乐、摄影打卡、户外运动、特定活动或无明确目标。</options>
+        <output>第一优先目标、第二优先目标、可兼顾目标和不重要目标。</output>
+      </requirement>
+      <requirement id="FR-202" name="内容偏好与成员差异" status="confirmed">
+        <options>自然景观、海岛沙滩、古镇历史、博物馆、主题乐园、动物园水族馆、美食、购物、温泉度假、徒步、城市漫游、夜生活、小众体验和网红景点。</options>
+        <rule>允许不同成员分别选择，并识别偏好冲突。</rule>
+      </requirement>
+      <requirement id="FR-203" name="节奏、接受程度与排除项" status="confirmed">
+        <paceOptions>
+          <pace code="RELAXED">每天一至两个主要项目</pace>
+          <pace code="BALANCED">每天两至三个主要项目</pace>
+          <pace code="INTENSIVE">尽量多安排项目</pace>
+          <pace code="AUTO">由 Agent 根据成员判断</pace>
+        </paceOptions>
+        <avoidanceOptions>早起、夜间活动、久走、爬山、长途乘车、多次换乘、频繁换酒店、拥挤、排队、过冷过热、雨雪、特殊饮食和语言困难。</avoidanceOptions>
+        <outputs>
+          <field name="mustHave">必须满足</field>
+          <field name="mustAvoid">明确排除</field>
+        </outputs>
+        <rule>mustHave 和 mustAvoid 作为硬性条件，不作为普通偏好分数。</rule>
+      </requirement>
+      <requirement id="FR-204" name="预算模型" status="confirmed">
+        <inputModes>总预算、人均预算、消费档次或由 Agent 先估算。</inputModes>
+        <coverage>确认是否包含往返交通、住宿、当地交通、餐饮、门票、签证保险、购物和应急备用金。</coverage>
+        <fallbackLevels>经济型、均衡型、舒适型、品质型或多方案比较。</fallbackLevels>
+        <spendingPriorities>交通、酒店、美食、景点体验、购物或均衡。</spendingPriorities>
+        <fields>金额、币种、预算口径、可浮动比例、消费优先级。</fields>
+      </requirement>
+      <requirement id="FR-205" name="目的地筛选条件" status="confirmed">
+        <conditionalDimensions>
+          <dimension>气候与季节偏好</dimension>
+          <dimension>可接受的门到门单程时间</dimension>
+          <dimension>热门、小众与拥挤接受度</dimension>
+          <dimension condition="出境">护照、签证、语言、中文服务、长途飞行、支付与网络</dimension>
+          <dimension condition="特殊成员">无障碍、就医便利、儿童设施、婴儿车通行、高海拔、安全与自驾条件</dimension>
+        </conditionalDimensions>
+        <rule>只追问会明显改变候选结果的条件，不机械询问全部维度。</rule>
+      </requirement>
+      <requirement id="FR-206" name="候选目的地生成与确认" status="confirmed">
+        <filterOrder>
+          <step order="1">排除违反硬性约束的目的地。</step>
+          <step order="2">检查时间和交通可行性。</step>
+          <step order="3">检查预算可行性。</step>
+          <step order="4">检查老人、儿童和身体条件。</step>
+          <step order="5">匹配旅行目标和兴趣偏好。</step>
+          <step order="6">检查季节、天气和旺季情况。</step>
+        </filterOrder>
+        <candidateCount minimum="3" maximum="5" />
+        <candidateTypes>综合最匹配、最省钱、最轻松、体验最丰富和备选方案。</candidateTypes>
+        <candidateFields>目的地、推荐理由、建议天数、预计预算、交通方式、旅行强度、核心体验、老人儿童适配、旺季情况、主要风险和匹配度。</candidateFields>
+        <specificDestinationRule>用户已有明确目的地时优先做适配检查，除非明显不可行，否则不强迫用户改选。</specificDestinationRule>
+      </requirement>
+      <exitCondition>用户确认一个目的地，或确认需要继续对比的候选范围。</exitCondition>
+    </stage>
+    <stage id="STAGE-3" name="多平台攻略与目的地情报" status="confirmed" priority="P0">
+      <stageBehavior>本阶段以 Agent 自主研究为主，减少对用户的重复提问；除景点情报外，还需要提前沉淀餐饮、住宿、地图与活动时间数据，为后续 Day Skeleton、Stay Segment 和具体住宿决策提供证据。</stageBehavior>
+      <requirement id="FR-301" name="接收用户已有线索" status="confirmed">
+        <agentPrompt>关于这个目的地，有没有已经收藏的攻略、视频、链接，或者一定想去的地方？没有也没关系，我可以直接开始整理。</agentPrompt>
+        <acceptedInputs>小红书、抖音、B站或网页链接，景点、酒店、餐厅名称，图片、截图、文字或无输入。</acceptedInputs>
+        <rule>用户提供的内容只作为待验证线索，不能直接视为事实。</rule>
+      </requirement>
+      <requirement id="FR-302" name="多来源搜索" status="confirmed">
+        <sourceGroups>
+          <sourceGroup type="UGC">小红书、抖音、B站、旅游论坛，用于体验、路线、拍照位置和避雷。</sourceGroup>
+          <sourceGroup type="OFFICIAL">景区、文旅、交通、使领馆等官方来源，用于营业、预约、入境和安全事实。</sourceGroup>
+          <sourceGroup type="MAP_TRANSACTION">地图、旅游和交易平台，用于位置、距离、酒店、门票和交通。</sourceGroup>
+          <sourceGroup type="CURRENT_SIGNALS">天气、交通、新闻和当地资讯，用于延误、活动、维修、管制和突发变化。</sourceGroup>
+        </sourceGroups>
+        <queryPattern>目的地 × 出游月份 × 人员类型 × 兴趣 × 风险</queryPattern>
+        <freshnessRules>
+          <rule type="运营事实">营业时间、价格和交通优先最近一个月或官方最新信息。</rule>
+          <rule type="旺季天气">优先同季节及近期信息。</rule>
+          <rule type="酒店餐厅">优先最近三至六个月。</rule>
+          <rule type="体验内容">通常参考最近一至两年，并结合季节。</rule>
+          <rule type="历史文化">不强制限制发布时间。</rule>
+        </freshnessRules>
+      </requirement>
+      <requirement id="FR-303" name="结构化提取" status="confirmed">
+        <entityTypes>景点与活动、住宿区域与酒店、餐厅与美食、当地交通、风险避雷与预约事项。</entityTypes>
+        <pointOfInterestFields>名称、别名、分类、坐标、区域、建议时长、开放时间、票价、预约要求、最佳时间、人流、步行强度、老人适配、儿童适配、无障碍、警告、来源、核验时间和可信度。</pointOfInterestFields>
+      </requirement>
+      <requirement id="FR-304" name="实体与内容去重" status="confirmed">
+        <rules>
+          <rule>合并中外文名、正式名、简称和常见别名。</rule>
+          <rule>区分景区整体与景区内部独立项目。</rule>
+          <rule>识别原创、转载和同一作者的重复发布。</rule>
+          <rule>重复转载不能计为多条独立证据。</rule>
+        </rules>
+      </requirement>
+      <requirement id="FR-305" name="可信度、时效与冲突处理" status="confirmed">
+        <confidenceLevels>
+          <level code="HIGH">官方确认或多个独立可靠来源一致。</level>
+          <level code="MEDIUM">多个用户反馈一致但缺少官方确认。</level>
+          <level code="LOW">单一来源、较旧或疑似推广。</level>
+          <level code="DISPUTED">多个可靠来源存在冲突。</level>
+          <level code="UNKNOWN">证据不足，无法确认。</level>
+        </confidenceLevels>
+        <factRule>营业、票价、预约、交通和闭园等客观事实优先采用最新官方来源。</factRule>
+        <opinionRule>体验、口味、拍照和商业化程度等主观内容综合多个独立用户反馈。</opinionRule>
+        <conflictRules>
+          <rule>营业状态冲突时采用最新官方公告。</rule>
+          <rule>票价冲突时标记查询日期并以官方价格为准。</rule>
+          <rule>排队时间按工作日、周末、淡旺季分别记录。</rule>
+          <rule>主观评价冲突时保留正反观点并解释适用人群。</rule>
+          <rule>无法核实时明确标记未知，禁止猜测。</rule>
+        </conflictRules>
+      </requirement>
+      <requirement id="FR-306" name="用户适配性评分" status="confirmed">
+        <dimensions>旅行目标、老人适配、儿童适配、步行爬坡、排队、空间距离、票价和时间成本、旺季体验、用户兴趣及排除冲突。</dimensions>
+        <categories>
+          <category code="MUST">必去</category>
+          <category code="RECOMMENDED">推荐</category>
+          <category code="OPTIONAL">可选</category>
+          <category code="CAUTION">谨慎</category>
+          <category code="NOT_RECOMMENDED">不建议</category>
+        </categories>
+      </requirement>
+      <requirement id="FR-307" name="目的地情报报告与用户确认" status="confirmed">
+        <reportSections>目的地现状、适合体验、推荐景点、不建议景点、住宿区域、餐饮线索、旺季人流、预约购票、常见踩坑、争议未知、来源链接和更新时间。</reportSections>
+        <userActions>设为必去、删除、设为备选、添加项目、要求进一步调查或允许 Agent 自动决定。</userActions>
+        <outputSets>mustVisit、preferred、optional、excluded。</outputSets>
+      </requirement>
+      <requirement id="FR-308" name="行程与住宿联合规划的数据支撑" status="confirmed">
+        <planningObjects>景点与活动 POI、餐饮 Restaurant、住宿 Accommodation、固定时间事件 FixedSchedulePOI、地图路线时长、天气与实时信号。</planningObjects>
+        <sourceResponsibilityMatrix>
+          <source platform="小红书">攻略、路线组合、真实游玩时长、拍照点、踩坑、餐饮体验、住宿体验和旺季反馈。</source>
+          <source platform="抖音">攻略、餐饮、景点内容、本地生活商品、酒店团购券与住宿套餐。</source>
+          <source platform="B站">长攻略、完整路线、旅行复盘和跨区域玩法。</source>
+          <source platform="携程">景点、酒店、房型、票务、日期价格、入住政策和用户评价。</source>
+          <source platform="飞猪">酒店、票务、旅行产品、日期价格和套餐。</source>
+          <source platform="美团">酒店、餐饮、本地娱乐、本地生活和本地消费信息。</source>
+          <source platform="地图平台">坐标、区域关系、粗粒度移动时间和空间聚类；用于规划约束，不负责替代用户实际导航。</source>
+          <source platform="官方来源">营业、闭馆、最晚入场、票价、预约、政策与安全事实。</source>
+          <source platform="天气与实时信号">天气、临时关闭、交通异常、活动和其他会改变行程可执行性的动态信息。</source>
+        </sourceResponsibilityMatrix>
+        <poiMinimumFields>名称、坐标、类型、开放时间、闭馆日、最晚入场、建议游玩时长、推荐上午/下午/晚上、预约、票价、旺季/排队、天气敏感性、室内外属性、适配人群、避雷信息、来源与核验时间。</poiMinimumFields>
+        <restaurantMinimumFields>名称、坐标、菜系、人均、营业时间、午餐/晚餐可用性、预约、排队、推荐菜、用户适配、是否为目的型餐厅、来源与核验时间。</restaurantMinimumFields>
+        <accommodationMinimumFields>住宿实体、地址/坐标、房型、床型、入住政策、渠道、日期价格、套餐、取消政策、库存状态、来源与核验时间。</accommodationMinimumFields>
+        <researchRounds>
+          <round order="1">目的地研究：发现值得去的景点、活动、餐饮和住宿线索。</round>
+          <round order="2">日程研究：验证候选 Day Cluster 的游玩时长、营业窗口、半日组合和餐饮区域。</round>
+          <round order="3">住宿研究：基于 Stay Segment 搜索具体住宿、房型与渠道 Offer。</round>
+          <round order="4">最终核验：在具体住宿、每日路线、餐厅和完整时间轴输出前再次检查营业、闭馆、最晚入场、预约、票务、交通班次、餐厅营业、酒店库存、动态价格及其他会影响可执行性的事实。</round>
+        </researchRounds>
+        <rules>
+          <rule>客观事实与主观体验继续分开存储；官方运营事实优先于 UGC。</rule>
+          <rule>平台角色是产品层数据职责，不等于默认存在开放 API；具体访问方式在技术设计阶段确定。</rule>
+          <rule>地图数据主要用于判断空间关系与粗粒度移动时间，不要求 Agent 输出用户实际导航步骤。</rule>
+          <rule>搜索结果不能直接进入规划结论；动态事实必须先经过来源、时效、冲突和验证状态检查，才能作为正式规划约束。</rule>
+        </rules>
+      </requirement>
+      <exitCondition>用户确认景点与体验候选集合，或授权 Agent 自动决定；同时已形成支撑后续行程骨架与住宿联合规划的基础 POI、餐饮、住宿和地图数据。</exitCondition>
+    </stage>
+    <stage id="STAGE-4" name="交通、行程骨架与住宿段决策" status="confirmed" priority="P0">
+      <requirement id="FR-401" name="补充交通约束" status="confirmed">
+        <questions>是否已经预订、必须或不能采用某种交通方式、早晚班接受度、中转接受度、行李和特殊协助、自驾和租车条件。</questions>
+        <selfDriveFields>驾驶证、驾驶员人数、单日驾驶上限、山路夜路雪地接受度、异地还车、儿童座椅、停车燃油和过路费。</selfDriveFields>
+        <outboundDriveRule>出境自驾必须实时核查驾照认可、翻译或国际许可、驾驶方向、年龄、保险和当地交通规则。</outboundDriveRule>
+      </requirement>
+      <requirement id="FR-402" name="搜索往返交通方案" status="confirmed">
+        <modes>飞机、高铁、普通列车、长途汽车、轮船、自有车辆、到达后租车和多模式组合。</modes>
+        <rule>已经购买且用户不要求修改的票务作为硬性条件。</rule>
+      </requirement>
+      <requirement id="FR-403" name="门到门比较" status="confirmed">
+        <journeySegments>住所到枢纽、候车值机安检、主要交通、中转换乘、取行李、到达后市内交通和酒店抵达。</journeySegments>
+        <dimensions>总耗时、有效游玩时间、总费用、舒适度、同行适配、灵活性、稳定性、行李便利性和可选环境成本。</dimensions>
+        <costCoverage>票价、行李、接送、燃油、停车、过路费和其他附加成本。</costCoverage>
+      </requirement>
+      <requirement id="FR-404" name="异地出发与会合优化" status="confirmed">
+        <strategies>各自直达、先到共同城市集合、在目的地会合或分批抵达。</strategies>
+        <optimization>抵达时间差、等待成本、总费用、接送安排以及老人儿童是否有人陪同。</optimization>
+      </requirement>
+      <requirement id="FR-405" name="交通推荐与确认" status="confirmed">
+        <recommendationTypes>综合最推荐、最省时间、最省钱、最舒适和应急备选。</recommendationTypes>
+        <requiredOutput>门到门时间线、总耗时、总费用、优缺点和针对当前成员的推荐理由。</requiredOutput>
+        <userActions>选择方案、调整出发时间、限定交通方式、调整预算、暂不预订或标记已预订。</userActions>
+      </requirement>
+      <requirement id="FR-406" name="当地交通策略" status="confirmed">
+        <modes>地铁公交、出租车或网约车、租车自驾、包车、步行骑行、城际火车巴士和混合模式。</modes>
+        <dimensions>景点分布、公共交通、换乘、成员情况、人数行李、停车、总成本、限行、夜间交通、旺季拥堵和天气。</dimensions>
+        <rule>允许按日期和场景混合使用多种交通方式，不强制整趟旅行采用单一模式。</rule>
+      </requirement>
+      <requirement id="FR-407" name="景点粗聚类与候选住宿区域分析" status="confirmed">
+        <inputs>往返交通枢纽、mustVisit/preferred 景点、活动时间窗口、夜间活动、当地交通策略、同行成员、预算、天数和行李。</inputs>
+        <process>先对景点与活动按空间位置、可组合时长和营业窗口做粗粒度聚类，得到半日级候选 Day Cluster；再比较核心城区、交通枢纽、安静区域、性价比区域和特殊成员友好区域。</process>
+        <candidateCount minimum="2" maximum="4" />
+        <areaFields>区域名称、推荐理由、对应候选 Day Cluster、住宿价格范围、餐饮便利、夜间环境、主要缺点和适合连续住宿的预估夜数。</areaFields>
+        <hotelChangeRule>只有更换住宿带来的日程连续性、空间效率或体验收益明显高于退房、搬运行李、寄存、重新入住和成员疲劳成本时才建议更换。</hotelChangeRule>
+      </requirement>
+      <requirement id="FR-408" name="交通与候选住宿范围初步确认" status="confirmed">
+        <outputs>往返交通方案、备选交通、当地交通主次策略、特殊日期交通、候选住宿区域和景点粗粒度空间聚类结果。</outputs>
+        <rule>本节点只确认候选范围，不提前固定具体酒店或强制用户先给出各区域住宿夜数；住宿夜数由后续 Day Skeleton 与 Stay Segment 联合规划推导。</rule>
+      </requirement>
+      <requirement id="FR-409" name="行程骨架、餐饮区域与住宿夜数联合规划" status="confirmed">
+        <definition>住宿区域、住宿夜数、每天上午/下午/晚上活动和餐饮区域互相影响，不能采用“先固定酒店再排行程”或“先把日程精排完再找酒店”的单向流程；系统先构建半日级行程骨架，再生成 Stay Segment，并在具体住宿确定后继续精排。</definition>
+        <subRequirements>
+          <subRequirement id="FR-409A" name="景点半日级空间聚类">根据坐标、营业窗口、建议游玩时长和粗粒度移动时间，把可在同一上午、下午或晚上完成的景点与活动形成候选 Cluster。</subRequirement>
+          <subRequirement id="FR-409B" name="上午/下午/晚间活动组合">为每个旅行日生成 Morning、Afternoon、Evening 的活动骨架；不在此阶段细化到分钟级导航。</subRequirement>
+          <subRequirement id="FR-409C" name="午餐/晚餐区域锚点">根据上午与下午活动、下午与晚间活动之间的空间关系，先确定 lunchArea 与 dinnerArea；若用户指定必须前往的餐厅，则将其作为 FixedSchedulePOI 参与行程约束。</subRequirement>
+          <subRequirement id="FR-409D" name="Day Skeleton 生成">形成包含日期、上午 Cluster、午餐区域、下午 Cluster、晚餐区域、晚间活动、固定事件、第一/最后主要 POI 和候选住宿区域的半日级 Day Skeleton。</subRequirement>
+          <subRequirement id="FR-409E" name="每晚住宿位置需求">根据当天最后活动、次日第一活动、抵达/离开方向以及整个连续住宿段的活动分布，判断每晚更适合落在哪个区域。</subRequirement>
+          <subRequirement id="FR-409F" name="连续住宿夜数分析">通过连续 Day Skeleton 的空间连续性推导某一区域应住一晚、两晚或更多；住宿夜数默认由 Agent 推导，不要求用户预先给定。</subRequirement>
+          <subRequirement id="FR-409G" name="换住宿收益与成本判断">比较更换住宿带来的空间/日程收益与退房、寄存、搬运行李、重新入住、等待和老人儿童照护成本，避免为小幅通勤差异频繁换酒店。</subRequirement>
+          <subRequirement id="FR-409H" name="Stay Segment 输出">把连续住宿安排输出为 Stay Segment，记录目的地、checkInDate、checkOutDate、overnightDates、夜数、关联 Day Skeleton、候选住宿区域、留在该区域的理由以及是否建议换住宿。</subRequirement>
+        </subRequirements>
+        <daySkeletonModel>
+          <field name="date" />
+          <field name="morningCluster" />
+          <field name="lunchArea" />
+          <field name="afternoonCluster" />
+          <field name="dinnerArea" />
+          <field name="eveningCluster" />
+          <field name="fixedEvents" />
+          <field name="firstMajorPOI" />
+          <field name="lastMajorPOI" />
+          <field name="candidateOvernightArea" />
+        </daySkeletonModel>
+        <staySegmentModel>
+          <field name="staySegmentId" />
+          <field name="destination" />
+          <field name="checkInDate" />
+          <field name="checkOutDate" />
+          <field name="overnightDates" />
+          <field name="numberOfNights" />
+          <field name="relatedDays" />
+          <field name="relatedDayClusters" />
+          <field name="accommodationArea" />
+          <field name="reasonForStayingHere" />
+          <field name="hotel" resolvedBy="FR-501" />
+        </staySegmentModel>
+        <rules>
+          <rule>第一天需要结合抵达时间、第一批活动与当晚住宿位置，避免抵达后为放行李或回酒店产生明显反向移动。</rule>
+          <rule>连续多晚住宿时优化整个 Stay Segment 的总体空间合理性，不要求酒店每天都距离当日景点最近。</rule>
+          <rule>只有空间差异足以明显影响旅行体验时才改变住宿推荐，避免为了几分钟差距过度优化。</rule>
+          <rule>用户负责实际导航，但 Agent 后台仍需使用地图距离和粗粒度移动时间作为规划约束。</rule>
+          <rule>具体餐厅可在后续精排阶段选择；但午餐/晚餐所在区域必须在 Day Skeleton 阶段进入联合规划。</rule>
+          <rule>checkInDate、checkOutDate、overnightDates 与 numberOfNights 必须能够互相校验，禁止用“旅行日数量”代替“住宿夜数量”。</rule>
+          <rule>红眼交通、凌晨到达、提前一晚订房和 HOTEL_CHANGE_DAY 必须明确归属到具体 Stay Segment，并说明是否产生额外住宿夜或行李处理时间。</rule>
+        </rules>
+      </requirement>
+      <exitCondition>用户确认往返交通与当地交通策略，并接受半日级 Day Skeleton、候选住宿区域、住宿夜数及 Stay Segment 的联合规划结果；具体住宿尚未在本阶段锁定。</exitCondition>
+    </stage>
+    <stage id="STAGE-5" name="具体方案、完整时间轴与出发前任务中心" status="confirmed" priority="P0">
+      <requirement id="FR-501" name="具体住宿筛选、房型与预订方案" status="confirmed">
+        <definition>基于已确认的 Stay Segment 搜索具体酒店/民宿，处理多人房型、跨平台同酒店/同房型匹配、真实支付成本、套餐价值、日程空间适配和交易风险；Agent 负责住宿决策分析、比较与推荐，OTA/本地生活平台负责商品与成交，用户保留最终选择和支付决定。</definition>
+        <subRequirements>
+          <subRequirement id="FR-501A" name="住宿段与住宿区域继承">直接继承 Stay Segment 的目的地、区域、入住/退房日期、夜数、关联 Day Skeleton、同行成员、预算和关键限制，不重复询问。</subRequirement>
+          <subRequirement id="FR-501B" name="已有住宿、订单与平台偏好">接收已预订酒店、收藏、平台链接、截图、会员、优惠券与携程/美团/飞猪/抖音等预订偏好；用户线索必须再次核验。</subRequirement>
+          <subRequirement id="FR-501C" name="住宿硬性约束">处理预算上限、合法入住人数、房间数量限制、独立床、连通/相邻房、无烟、晚到、儿童政策、停车、无障碍和明确排除项。</subRequirement>
+          <subRequirement id="FR-501D" name="住宿体验与设施偏好">按必要性收集早餐、洗衣、厨房、房间面积、景观、安静程度、品质、设施等柔性偏好，不机械追问所有维度。</subRequirement>
+          <subRequirement id="FR-501E" name="携程/美团/飞猪/抖音多平台住宿搜索">搜索指定日期的酒店/民宿实时 Offer，同时支持抖音等 Voucher/Package 商品；酒店官网主要承担政策与房型核验角色。</subRequirement>
+          <subRequirement id="FR-501F" name="住宿实体、房型与跨平台商品匹配">按住宿实体、RoomType、RatePlan/VoucherPackage 三级完成跨平台去重和匹配；名称不能作为唯一匹配依据，不确定时禁止强行合并价格。</subRequirement>
+          <subRequirement id="FR-501G" name="家庭/多人房型组合">根据成员关系、年龄、照护关系、酒店入住政策、真实床位和用户硬约束生成合法 Room Assignment，并比较家庭完整性、照护便利、隐私、舒适与成本。</subRequirement>
+          <subRequirement id="FR-501H" name="真实住宿成本与套餐价值标准化">把页面价、税费、加床/儿童费、周末/节假日加价、公开优惠、会员优惠、优惠券和套餐权益统一为整个 Stay Segment 的可比较总成本；现金支付与套餐权益价值分开呈现。</subRequirement>
+          <subRequirement id="FR-501I" name="住宿与日程空间适配">将候选具体住宿重新代入关联 Day Skeleton，重点检查第一天、最后一天、连续多日活动区域和换住宿边界；只判断是否存在明显空间不合理，不负责输出实际导航步骤。</subRequirement>
+          <subRequirement id="FR-501J" name="退改、预约、入住与套餐风险">核验取消、预付款、押金、晚到、前台时间、儿童/加床政策、城市税、装修、房型描述冲突、库存以及抖音套餐二次预约、不可用日期和兑现风险。</subRequirement>
+          <subRequirement id="FR-501K" name="最终住宿推荐与预订跳转" dependsOn="FR-501L,FR-501M">通过住宿推荐前 Verification Gate 且无未处理的硬冲突后，输出综合推荐、最低现金成本、最佳权益/灵活性和备选方案，说明贵/便宜多少、换来了什么、牺牲了什么，并跳转到相应平台完成预订；首版不代替用户完成不可逆支付。</subRequirement>
+          <subRequirement id="FR-501L" name="住宿推荐前 Verification Gate">在输出可预订推荐和平台跳转前，独立验证入住日期、退房日期、连续每晚库存、入住人数、房间数、房型床型、入住政策、完整费用、取消时限、套餐兑现条件、来源、retrievedAt 和重新核验触发条件。</subRequirement>
+          <subRequirement id="FR-501M" name="住宿不可用与空间失衡回退">当目标区域无合法房型、只有部分夜晚有房、套餐无法覆盖日期或具体住宿导致日程明显失衡时，按既定顺序扩大候选并局部回写上游，不得静默放宽硬约束。</subRequirement>
+          <subRequirement id="FR-501N" name="用户选择、预订与变更状态">分别保存 Agent 推荐、用户选择、待外部预订、用户自报已预订、已验证预订、变更和取消状态；已预订住宿默认成为硬约束，除非用户明确同意重新评估。</subRequirement>
+        </subRequirements>
+        <channelRoles>
+          <channel name="携程">标准住宿搜索、房型、日期价格、入住政策、评价与成交。</channel>
+          <channel name="飞猪">住宿、票务、旅行产品、日期价格与套餐。</channel>
+          <channel name="美团">国内酒店、本地生活、餐饮和周边消费信息。</channel>
+          <channel name="抖音">住宿团购券、预售套餐、本地生活商品以及 UGC 内容。</channel>
+        </channelRoles>
+        <coreDataModel>AccommodationProperty → RoomType → RatePlan/VoucherPackage → BookingChannelOffer。</coreDataModel>
+        <priceRules>
+          <rule>比较整个 Stay Segment 的 finalConfirmedPrice，不以“每晚起价”或营销价直接排序。</rule>
+          <rule>实际支付金额与早餐、下午茶、SPA、延迟退房等套餐权益价值分开计算；商家标称价值不能直接抵扣现金成本。</rule>
+          <rule>优惠分为公开可得、用户确认、账户验证、潜在和未知；未确认的优惠只能显示为可能最低价。</rule>
+          <rule>抖音等套餐必须把有效期、不可用日期、周末/节假日加价、补差、预约提前量与预约可兑现性代入用户实际日期。</rule>
+          <rule>完整成本必须区分币种、税费、服务费、清洁费、度假费、支付手续费和现场收费；汇率换算只能作为带时间戳的估计。</rule>
+          <rule>整个 Stay Segment 必须核验连续库存；需要拆单、换房型或同酒店换房时，应显式计入重新办理、行李移动和房型不连续成本。</rule>
+        </priceRules>
+        <roomAssignmentRules>
+          <rule>酒店允许入住人数不等于真实睡眠容量；必须解析固定床、加床、沙发床、婴儿床和用户独立床要求。</rule>
+          <rule>优先保持家庭单元与照护关系；儿童、老人或其他依赖成员不得因价格优化被自动分配到不合理房间。</rule>
+          <rule>Connecting、Adjacent 和 Same Floor 必须区分“保证”与“仅可备注申请”。</rule>
+          <rule>若没有方案满足全部硬约束，Agent 必须解释冲突并让用户选择放宽预算、房间关系、区域或其他条件，不能自行取消硬约束。</rule>
+        </roomAssignmentRules>
+        <accommodationOfferVerificationReport>
+          <field name="staySegmentId" />
+          <field name="propertyId" />
+          <field name="channelOfferId" />
+          <field name="checkInDate" />
+          <field name="checkOutDate" />
+          <field name="travelerCount" />
+          <field name="roomCount" />
+          <field name="continuousInventoryStatus" />
+          <field name="roomAndBedVerification" />
+          <field name="occupancyPolicyVerification" />
+          <field name="finalPriceBreakdown" />
+          <field name="cancellationDeadlineWithTimezone" />
+          <field name="voucherRedemptionStatus" />
+          <field name="verificationStatus" />
+          <field name="retrievedAt" />
+          <field name="recheckTrigger" />
+        </accommodationOfferVerificationReport>
+        <bookingStates>
+          <state code="AGENT_RECOMMENDED">Agent 推荐，尚非用户决定</state>
+          <state code="USER_SELECTED">用户已选择，尚未完成外部预订</state>
+          <state code="BOOKING_PENDING">用户正在或准备在外部平台办理</state>
+          <state code="BOOKED_USER_REPORTED">用户声明已预订，但订单关键字段尚未验证</state>
+          <state code="BOOKED_VERIFIED">日期、住宿、房型/房间组合和入住人数已核对</state>
+          <state code="CHANGED">外部订单已发生变更</state>
+          <state code="CANCELLED">外部平台已确认取消</state>
+        </bookingStates>
+        <fallbackRules>
+          <rule order="1">优先在同一区域更换住宿、房型、RatePlan 或合法房间组合。</rule>
+          <rule order="2">同一区域无解时比较相邻区域，并重新计算整个 Stay Segment 的空间与交通影响。</rule>
+          <rule order="3">仍无解时才建议调整住宿夜数或换住宿边界，并局部重算受影响的 Day Skeleton。</rule>
+          <rule order="4">所有候选仍违反硬约束时，明确列出预算、区域、房型或其他冲突，让用户选择放宽项；Agent 不得自行取消硬约束。</rule>
+        </fallbackRules>
+        <spatialFitEvaluation>
+          <dimension>整个 Stay Segment 的累计规划级移动时间</dimension>
+          <dimension>最差单日的首段和末段移动</dimension>
+          <dimension>抵达日、离开日与换住宿日的额外时间</dimension>
+          <dimension>寄存、转运、办理入住和成员疲劳成本</dimension>
+          <dimension>夜间交通可用性、安全风险与新增现金成本</dimension>
+          <rule>不设全国统一的固定分钟阈值；必须根据成员、节奏和日型输出可解释的净收益/净成本，只有差异足以影响体验或可执行性时才触发住宿复核。</rule>
+        </spatialFitEvaluation>
+        <exitCondition>用户确认每个 Stay Segment 的具体住宿、房型/房间组合和预订渠道，或选择暂不预订但保留候选。</exitCondition>
+      </requirement>
+      <requirement id="FR-502" name="每日景点路线与顺序精排" status="confirmed">
+        <definition>在 Day Skeleton、Stay Segment 和具体住宿已基本确定后，对每日候选景点和活动进行可执行性精排；先计算真实可用时间，再在营业窗口、预约、游玩时长、移动、成员体力、餐饮窗口和固定事件约束下决定访问顺序、删减与备选。</definition>
+        <subRequirements>
+          <subRequirement id="FR-502A" name="Day Skeleton 与住宿结果继承">读取 Day Skeleton、Stay Segment、已确认/候选住宿、mustVisit/preferred/optional、固定事件、已购票、交通策略、成员限制和节奏偏好，不重复询问已知信息。</subRequirement>
+          <subRequirement id="FR-502B" name="旅行日类型识别">识别 ARRIVAL_DAY、NORMAL_DAY、HOTEL_CHANGE_DAY、INTERCITY_TRANSFER_DAY、DEPARTURE_DAY；不同日型采用不同的可用时间与行李/转场逻辑。</subRequirement>
+          <subRequirement id="FR-502C" name="每日可用时间与时间预算">先计算可用开始/结束时间，再扣除固定事件、餐饮、移动、排队、休息与缓冲，得到真正可分配给景点活动的时间容量。</subRequirement>
+          <subRequirement id="FR-502D" name="POI 真实游玩时长与时间窗核验">综合官方营业/闭馆/最晚入场、票务预约、平台建议与近期独立 UGC 体验，形成 minimum/recommended/extendedVisitDuration、有效时间窗、推荐时段和可信度。</subRequirement>
+          <subRequirement id="FR-502E" name="固定预约与不可移动事件锁定">只有 reservation=CONFIRMED，且对象、日期、具体时段与适用参与人范围均已核验的景点、演出、交通、目的型餐厅等外部事件，才能锁定为对应参与人范围内的时间锚点；仅付款、REQUESTED、HELD、WAITLISTED、用户自报未核验或开放日期票均不自动锁定具体时间，其余活动只在剩余可用时间块中安排。</subRequirement>
+          <subRequirement id="FR-502F" name="景点优先级与超载检测">将活动区分为 P0_FIXED、P0_MUST、P1_PREFERRED、P2_OPTIONAL 与 BACKUP；当预计所需时间明显超过可用容量时标记 DAY_OVERLOADED，解释冲突并给出删减、换日或延长旅行的建议。</subRequirement>
+          <subRequirement id="FR-502G" name="访问顺序与移动方向优化">综合空间关系、开放时间、最晚入场、预约、游玩时长、推荐时段、餐饮窗口和成员限制优化顺序；地图只提供规划级移动时间与方式建议，不输出详细导航步骤。</subRequirement>
+          <subRequirement id="FR-502H" name="成员体力、节奏与连续多日强度控制">将 RELAXED/BALANCED/INTENSIVE/AUTO 真正作用于每日活动数量、休息和缓冲，并检查连续多日 walking/standing/transfer/outdoor/earlyWake/lateNight 负荷，必要时建议降低某日强度。</subRequirement>
+          <subRequirement id="FR-502I" name="Core/Flexible/Backup 分层">每个旅行日输出 Core 必做、Flexible 时间允许执行和 Backup 异常替换三层活动，避免把所有候选都写成必须执行。</subRequirement>
+          <subRequirement id="FR-502J" name="冲突解释与局部调整">发现营业、预约、移动、强度或时间冲突时只调整受影响日/时间块，不无理由推翻已确认的住宿、固定事件或其他日期。</subRequirement>
+          <subRequirement id="FR-502K" name="DailyRoutePlan 输出">输出按顺序排列的活动、规划级 RouteLeg、每日时间预算、固定事件、Flexible/Backup、强度、缓冲、警告和推荐理由，供餐饮与最终时间轴继续使用。</subRequirement>
+        </subRequirements>
+        <dailyRoutePlanModel>
+          <field name="date" />
+          <field name="dayType" />
+          <field name="daySkeletonId" />
+          <field name="availableWindow" />
+          <field name="timeBudget" />
+          <field name="orderedActivities" />
+          <field name="routeLegs" />
+          <field name="mealAnchors" />
+          <field name="fixedEvents" />
+          <field name="flexibleActivities" />
+          <field name="backupActivities" />
+          <field name="loadProfile" />
+          <field name="buffer" />
+          <field name="warnings" />
+          <field name="explanation" />
+        </dailyRoutePlanModel>
+        <rules>
+          <rule>第一天必须根据真实抵达、取行李、前往住宿/寄存和延误缓冲计算 earliestRealisticActivityStart，不按交通工具计划到达时间直接开始活动。</rule>
+          <rule>最后一天必须从航班/列车/轮船等离开时间反推 latestActivityEnd，并预留取行李、前往枢纽、值机/安检等时间。</rule>
+          <rule>换住宿日需比较原酒店寄存、新酒店寄存和可用行李转运方案对当天路线的影响；Agent 只给建议。</rule>
+          <rule>城际移动日允许包含 OriginHalfDay、TransferBlock 和 DestinationHalfDay，不强迫归属单一城市。</rule>
+          <rule>一天不能为了提高景点数量而排满 100% 可用时间，所有节奏均必须保留非零缓冲。</rule>
+        </rules>
+        <exitCondition>用户接受每日景点顺序、Core/Flexible/Backup 分层和主要时间容量判断，或授权 Agent 在后续餐饮选择后做局部回写。</exitCondition>
+      </requirement>
+      <requirement id="FR-503" name="具体餐厅与餐饮安排" status="confirmed">
+        <definition>在 DailyRoutePlan 和 Day Skeleton 的 lunchArea/dinnerArea 基础上搜索并验证具体餐厅/门店；餐饮是行程约束的一部分而非最后装饰。Agent 只提供主选、备选、预约和风险建议，由用户决定是否前往、预约或购买套餐。</definition>
+        <subRequirements>
+          <subRequirement id="FR-503A" name="餐饮需求、预算与已有线索继承">继承饮食偏好、mustAvoid、总/单餐预算、MustTryFood、MustVisitRestaurant、已收藏餐厅、酒店早餐、成员人数和每日路线，不重复询问。</subRequirement>
+          <subRequirement id="FR-503B" name="Meal Slot 与用餐时间窗生成">按实际行程生成必要的 BREAKFAST/BRUNCH/LUNCH/AFTERNOON_TEA/DINNER/LATE_NIGHT/SNACK 槽位，并计算 earliestStart、preferredWindow、latestEnd、候选区域和灵活度；不机械安排标准三餐。</subRequirement>
+          <subRequirement id="FR-503C" name="多平台餐厅与本地美食搜索">综合美团/大众点评类、本地生活平台、抖音、小红书、地图、餐厅官方及其他可验证来源获取门店、菜系、人均、菜单、营业、预约、排队、团购和近期体验。</subRequirement>
+          <subRequirement id="FR-503D" name="餐厅品牌、门店与跨平台实体匹配">以 RestaurantBranch 为实际规划实体，综合名称、地址、坐标、电话、商业体/楼层等识别同一门店，避免把同品牌不同分店错误合并。</subRequirement>
+          <subRequirement id="FR-503E" name="营业、预约、排队与用餐时长核验">验证营业日/时段、lastOrder、预约规则和状态；排队时间以近期多来源体验形成区间/风险等级，不能伪造分钟级精度；根据餐饮类型估计真实用餐时长。</subRequirement>
+          <subRequirement id="FR-503F" name="菜系、菜单、价格与成员适配">核验菜系、代表菜、人均/套餐价格、partySize、多人桌型、儿童/老人便利和用户饮食硬约束；无法确认硬性饮食适配时标记 UNKNOWN，不因高评分覆盖硬约束。</subRequirement>
+          <subRequirement id="FR-503G" name="餐厅角色分类">区分 DESTINATION 目的型餐厅、ROUTE_SUPPORTING 路线服务型餐厅和 FLEXIBLE 小吃/咖啡等弹性体验；目的型餐厅可以改变路线，普通餐厅原则上服务于路线。</subRequirement>
+          <subRequirement id="FR-503H" name="餐厅与前后活动路线适配">用前一活动→餐厅→后一活动的规划级移动时间计算 Detour Cost，并以顺路/小幅绕行/明显绕行呈现；普通用餐不为评分高而产生明显反向移动。</subRequirement>
+          <subRequirement id="FR-503I" name="多日菜系、预算与当地美食覆盖优化">跨旅行日控制重复菜系、连续高重复体验和餐饮预算分配，同时尽量覆盖用户 MustTryFood 与当地代表性美食；用户明确偏好重复时以用户选择为准。</subRequirement>
+          <subRequirement id="FR-503J" name="Primary/Backup 餐厅方案">每个关键 Meal Slot 输出 Primary 与同区域 Backup；备选尽量采用不同风险结构，避免主选与备选同时因排队、预约或同类高峰失效。</subRequirement>
+          <subRequirement id="FR-503K" name="MealPlan 输出并局部回写路线">形成 MealPlan；若目的型餐厅、正式预约或实际用餐时长改变当天可执行性，只局部回写 DailyRoutePlan，不推翻无关日期。</subRequirement>
+        </subRequirements>
+        <mealPlanModel>
+          <field name="date" />
+          <field name="mealType" />
+          <field name="timeWindow" />
+          <field name="area" />
+          <field name="primaryRestaurant" />
+          <field name="backupRestaurants" />
+          <field name="reservationStatus" />
+          <field name="queueRisk" />
+          <field name="estimatedDuration" />
+          <field name="estimatedSpend" />
+          <field name="cuisine" />
+          <field name="mustTryFoodCoverage" />
+          <field name="detourLevel" />
+          <field name="offer" />
+          <field name="evidence" />
+          <field name="warnings" />
+        </mealPlanModel>
+        <reservationStatuses>
+          <status code="NOT_REQUIRED">无需预约</status>
+          <status code="AVAILABLE_WALK_IN">可直接到店</status>
+          <status code="RECOMMENDED">建议预约</status>
+          <status code="REQUIRED_NOT_CONFIRMED">必须预约但尚未获得外部确认</status>
+          <status code="CONFIRMED">外部预约已确认</status>
+          <status code="WAITLIST">候补</status>
+          <status code="UNAVAILABLE">无可用预约</status>
+          <status code="UNKNOWN">无法确认</status>
+        </reservationStatuses>
+        <rules>
+          <rule>酒店已包含早餐必须进入 MealPlan，但是否使用由用户和实际行程决定；未使用的套餐权益不能被假定为用户实际价值。</rule>
+          <rule>MustTryFood 表示必须体验某类美食，不等同于 MustVisitRestaurant；前者允许 Agent 选择最适合路线的门店。</rule>
+          <rule>美团/抖音等餐饮团购可作为可选 Offer，但必须核验适用日期、时段、预约、补差和不可用条件；首版不把餐饮模块扩展成完整电商比价系统。</rule>
+          <rule>MealPlan 的预约状态只提供餐饮摘要；支付、预约确认、团购券二次预约和变更取消等正式状态由 FR-505 的多轴状态模型保存。</rule>
+          <rule>普通路线服务型餐厅不得触发住宿重排；只有已确认的目的型/固定餐饮会显著影响夜间交通、安全或次日首站时，才允许触发对应 Stay Segment 的局部复核。</rule>
+        </rules>
+        <exitCondition>用户接受各关键 Meal Slot 的主选/备选与主要预约建议，或允许 Agent 保留未确定餐厅并在最终时间轴中标记为 Flexible/Unverified。</exitCondition>
+      </requirement>
+      <requirement id="FR-504" name="完整时间轴生成" status="confirmed">
+        <definition>把已接受的交通、Stay Segment、住宿、DailyRoutePlan、MealPlan、票务/预约和成员约束编译为可执行的时间轴建议。FR-504 不重新决定目的地，而是在最终 Verification Gate 后明确区分硬事实、估计、建议和弹性安排。</definition>
+        <subRequirements>
+          <subRequirement id="FR-504A" name="已确认规划状态汇总">读取 Day Skeleton、DailyRoutePlan、MealPlan、Stay Segment、具体住宿、交通、fixedEvents、tickets/reservations、成员约束、节奏和 Evidence。</subRequirement>
+          <subRequirement id="FR-504B" name="最终 Verification Gate">在时间轴输出前重新验证景点营业/闭馆/最晚入场、预约/票务、航班/铁路/轮船班次、餐厅营业/预约、住宿入住退房及其他会锁定执行时间的动态事实，并输出 TimelineVerificationReport。</subRequirement>
+          <subRequirement id="FR-504C" name="Fixed/Recommended/Flexible/Optional/Backup 分类">把具有已确认具体时段的外部预约、不可移动班次或用户明确锁定的项目标为 FIXED；Agent 推荐但可调整项目标为 RECOMMENDED；可移动项目标为 FLEXIBLE；时间允许才做的项目标为 OPTIONAL；异常替代标为 BACKUP。仅购买开放日期票或仅接受 Agent 建议，不足以形成具体时段 FIXED。</subRequirement>
+          <subRequirement id="FR-504D" name="时间块计算">为活动、用餐、固定事件、休息和等待生成 startTime/endTime/duration，避免只列景点顺序而没有实际时间容量。</subRequirement>
+          <subRequirement id="FR-504E" name="规划级移动时间插入">在相邻活动之间插入由地图/交通数据支持的规划级移动时间和建议方式；用户负责实际导航，Agent 不输出逐步导航指令。</subRequirement>
+          <subRequirement id="FR-504F" name="排队、等待与休息时间插入">把排队、安检、候场、取行李、寄存、办理入住和休息作为独立时间成本；不确定等待以区间或缓冲表示而非假精确。</subRequirement>
+          <subRequirement id="FR-504G" name="缓冲时间分配">根据 RELAXED/BALANCED/INTENSIVE/AUTO、日型、天气敏感度和预约密度分配非零缓冲，禁止把一天安排到 100% 容量。</subRequirement>
+          <subRequirement id="FR-504H" name="日程冲突检测">检测关闭前无法抵达、预约重叠、转场不足、用餐窗口冲突、抵达日过早、离开日枢纽缓冲不足、换酒店行李逻辑等问题；发现冲突不得静默输出。</subRequirement>
+          <subRequirement id="FR-504I" name="多日强度再平衡">最终检查连续多日高强度、早起、晚归和大量转场；Agent 可建议把 Optional/Flexible 移至备选或换日，但用户保留最终决定。</subRequirement>
+          <subRequirement id="FR-504J" name="Backup 与替换关系">提前建立天气、排队、临时关闭或预约失败时的替换对象与适用条件，为 STAGE-6 动态重排提供结构化基础。</subRequirement>
+          <subRequirement id="FR-504K" name="完整时间轴输出">按旅行日输出带状态、验证标签、时间段、移动/等待、来源与风险的完整时间轴；不得把推荐时间表现成已确认事实。</subRequirement>
+          <subRequirement id="FR-504L" name="用户确认与局部修改">用户可接受、修改、删除、锁定或放宽某个时间块；修改只触发受影响的路线、MealPlan、时间轴和必要验证，不重算整个旅行。</subRequirement>
+        </subRequirements>
+        <timelineModel>
+          <field name="date" />
+          <field name="timelineItems" />
+          <field name="verificationReport" />
+          <field name="fixedItems" />
+          <field name="recommendedItems" />
+          <field name="flexibleItems" />
+          <field name="optionalItems" />
+          <field name="backupItems" />
+          <field name="travelBlocks" />
+          <field name="waitBlocks" />
+          <field name="restBlocks" />
+          <field name="buffers" />
+          <field name="conflicts" />
+          <field name="warnings" />
+          <field name="userConfirmedAt" />
+        </timelineModel>
+        <timelineItemClasses>
+          <class code="FIXED">具有已确认具体时段的外部约束，或用户明确锁定且不存在硬冲突的时间块</class>
+          <class code="RECOMMENDED">Agent 建议的执行时间</class>
+          <class code="FLEXIBLE">可在一定窗口内移动</class>
+          <class code="OPTIONAL">有余量时执行</class>
+          <class code="BACKUP">满足触发条件时替代</class>
+        </timelineItemClasses>
+        <rules>
+          <rule>硬时间约束必须基于 VERIFIED 数据或可验证的用户订单/预约；UNVERIFIED、CONFLICTED 或 STALE 数据不得静默锁定最终时间轴。</rule>
+          <rule>ESTIMATED 数据可以参与规划，但必须显示估计属性并配置合理缓冲，不能以假精确时间呈现。</rule>
+          <rule>如果关键事实尚未公布或无法验证，可以输出 provisional 候选时间轴，但必须明确指出待验证项和重新核验触发条件。</rule>
+          <rule>Agent 输出的是建议时间轴，用户可以选择更紧凑或更宽松的安排；用户明确接受高强度方案时保留风险提示而不擅自删改。</rule>
+          <rule>PAID、REQUESTED、HELD 或 WAITLISTED 不等于已确认具体时段；只有满足 FR-505 回写条件的外部结果才能成为相应参与人范围内的确定时间锚点。</rule>
+        </rules>
+        <exitCondition>用户确认或接受建议版完整时间轴；所有未验证、冲突或需用户后续操作的事项被明确标记并同步进入 FR-505。FR-505 的后续回写仅局部重新编译受影响日期。</exitCondition>
+      </requirement>
+      <requirement id="FR-505" name="预约、票务、证件与出发前任务中心" status="confirmed">
+        <definition>FR-505 是贯穿目的地筛选、交通、具体日程和出发前阶段的任务中心，而不是完整时间轴之后才生成的一次性清单。系统持续提取需要预约、购票、二次预约、取票、证件、签证、过境、入境申报和重新核验的事项，生成负责人、依赖、截止时间和 recheckAt；Agent 负责核验、比较、解释与建议，所有购买、支付、提交、正式预约、改签、取消和退款均由用户在外部平台完成。</definition>
+        <scopeBoundary>
+          <included>预约与票务任务；证件、签证、过境与入境材料；任务负责人、截止时间、依赖、recheckAt；出发前 Readiness Gate。</included>
+          <excluded>衣物与数量建议、天气穿搭、随身/托运行李分配、包袋重量尺寸、洗衣、多人共享物品和通用旅行购物清单。</excluded>
+          <conditionalException>只有用户主动说明轮椅、婴儿车、医疗设备或特殊运动装备等会影响交通、入境或活动可行性的物品时，才由交通、证件或活动模块条件核验；不建设独立行李模块。</conditionalException>
+        </scopeBoundary>
+        <subRequirements>
+          <subRequirement id="FR-505A" name="跨阶段任务自动提取与去重">从 Transport、Accommodation、DailyRoutePlan、MealPlan、FinalTimeline 及用户已有结果中持续提取购票、预约、二次预约、实名绑定、取票、证件和入境事项，并关联来源对象、合并重复任务。</subRequirement>
+          <subRequirement id="FR-505B" name="预约票务行动模式识别">区分仅购买、仅预约、购买并预约、购买后二次预约、免费限时预约、现场办理和规则未知，避免用单一“已预订”表示不同履约流程。</subRequirement>
+          <subRequirement id="FR-505C" name="规则、库存、截止与渠道验证">验证开售/放号时间、目标日期库存、预约窗口、实名与资格、票种、参与人、取消改签、入场凭证和官方/授权渠道；所有动态结果保留时区、来源、retrievedAt、validFor 和 VerificationStatus。</subRequirement>
+          <subRequirement id="FR-505D" name="外部办理与结果回填">输出建议方案和外部办理入口；打开链接不改变任何交易状态。用户回填实际日期、时段、分店、票种、人数和外部结果后，系统先核对差异再更新状态。</subRequirement>
+          <subRequirement id="FR-505E" name="多轴状态与多人覆盖">分别保存用户选择、可用性、支付、预约、出票/凭证、验证和任务就绪状态，并记录 requiredTravelers 与 confirmedTravelers；部分成员成功不得标记全团完成。</subRequirement>
+          <subRequirement id="FR-505F" name="失败、候补、变更取消与局部回写">处理未放票、售罄、候补、部分成功、改签、取消、退款和失效；只对已确认且适用的具体时段创建或更新 FixedEvent，并局部重算受影响的 DailyRoutePlan、MealPlan 与 FinalTimeline。</subRequirement>
+          <subRequirement id="FR-505G" name="证件问题按需触发">国内或无需相关判断的行程不询问签证；只有目的地、国籍/居留地、中转、自驾、购票实名或承运规则确实需要时，才一次询问一个会改变结论的最小事实。用户可回答不确定或跳过，对应结论保持 UNKNOWN。</subRequirement>
+          <subRequirement id="FR-505H" name="逐成员逐跨境段证件矩阵">以 Traveler × TravelDocument × BorderJourneyLeg 为最小单元，分别判断护照/通行证、签证、过境签、电子旅行授权、居留/再入境许可、入境卡、海关/健康申报和必要证明材料。</subRequirement>
+          <subRequirement id="FR-505I" name="证件官方规则、期限与外部办理">按主管机关职责使用目的地/中转地移民、外交、使领馆、海关、卫生及实际承运人官方信息，计算 earliestActionAt、latestSafeStartAt、hardDeadlineAt 和 recheckAt；Agent 不代填具有法律声明性质的表格，不承诺签证获批、登乘或入境。</subRequirement>
+          <subRequirement id="FR-505J" name="证件隐私禁区">R0 完全禁止上传或保存护照、身份证、签证页等证件原件、照片、完整号码和 MRZ；只条件收集国籍/居留地、证件类型/签发地、有效期、已有许可状态等必要结构化事实，且允许修改、跳过和删除。</subRequirement>
+          <subRequirement id="FR-505K" name="任务负责人、依赖、截止与 recheckAt">每项任务记录 owner、依赖任务、阻塞对象、优先级、最早可操作时间、建议完成时间、硬截止、目的地当地时区、recheckAt、失败影响与 Backup；R0 不在后台持续轮询或主动监控。</subRequirement>
+          <subRequirement id="FR-505L" name="出发前 Readiness Gate">分别运行目的地/路线可行性预检、不可逆预订前风险检查和出发前最终检查；结果必须下钻到具体成员、行程段和待办，禁止因部分成员完成或用户接受风险而覆盖证件、票务等硬阻断项。</subRequirement>
+        </subRequirements>
+        <reservationActionPatterns>
+          <pattern code="PURCHASE_ONLY">购买后即可形成有效权益，无需另行预约</pattern>
+          <pattern code="RESERVATION_ONLY">无需支付但必须获得明确预约确认</pattern>
+          <pattern code="PURCHASE_AND_RESERVATION">购买与具体时段预约在同一流程完成</pattern>
+          <pattern code="PURCHASE_THEN_SECONDARY_RESERVATION">先购买权益，再在电话、小程序、门店或其他渠道完成二次预约</pattern>
+          <pattern code="FREE_TIMED_ENTRY">免费但必须选择或获得具体入场时段</pattern>
+          <pattern code="WALK_IN">无需提前办理，只保留现场规则和重新核验任务</pattern>
+          <pattern code="UNKNOWN">当前无法确认真实行动模式</pattern>
+        </reservationActionPatterns>
+        <reservationStateModel>
+          <axis name="userDecision" values="AGENT_SUGGESTED,USER_SELECTED,USER_DECLINED,SUPERSEDED" />
+          <axis name="availability" values="NOT_RELEASED,AVAILABLE,LIMITED,WAITLIST_ONLY,SOLD_OUT,UNKNOWN,STALE" />
+          <axis name="payment" values="NOT_APPLICABLE,NOT_STARTED,PAYMENT_PENDING,PAID,FAILED,REFUND_PENDING,PARTIALLY_REFUNDED,REFUNDED" />
+          <axis name="reservation" values="NOT_APPLICABLE,NOT_STARTED,REQUESTED,HELD,WAITLISTED,CONFIRMED,CHANGE_PENDING,CANCEL_PENDING,CANCELLED,REJECTED,EXPIRED" />
+          <axis name="issuance" values="NOT_APPLICABLE,NOT_ISSUED,ISSUANCE_PENDING,PARTIALLY_ISSUED,ISSUED,VOIDED" />
+          <axis name="readiness" values="ACTION_REQUIRED,WAITING_EXTERNAL,BLOCKED,AT_RISK,READY,WAIVED,OBSOLETE" />
+          <axis name="verification" values="VERIFIED,CORROBORATED,UNVERIFIED,CONFLICTED,STALE" />
+        </reservationStateModel>
+        <reservationTicketTaskModel>
+          <field name="taskId" />
+          <field name="category" />
+          <field name="actionPattern" />
+          <field name="sourceEntityType" />
+          <field name="sourceEntityId" />
+          <field name="targetDate" />
+          <field name="timeWindow" />
+          <field name="timezone" />
+          <field name="requiredTravelerIds" />
+          <field name="confirmedTravelerIds" />
+          <field name="requiredQuantity" />
+          <field name="ownerId" />
+          <field name="dependencyTaskIds" />
+          <field name="blocksEntityIds" />
+          <field name="dueAt" />
+          <field name="recheckAt" />
+          <field name="primaryOption" />
+          <field name="backupOptions" />
+          <field name="stateAxes" />
+          <field name="evidence" />
+          <field name="warnings" />
+        </reservationTicketTaskModel>
+        <documentDecisionUnit>Traveler × TravelDocument × BorderJourneyLeg × TravelDate × TravelPurpose × TransportMode</documentDecisionUnit>
+        <travelerDocumentProfileModel>
+          <field name="travelerId" />
+          <field name="displayAlias" />
+          <field name="ageCategory" />
+          <field name="citizenshipOrDocumentIssuingJurisdiction" required="conditional" />
+          <field name="residenceJurisdictionAndStatus" required="conditional" />
+          <field name="documentType" required="conditional" />
+          <field name="documentExpiryDate" required="conditional" />
+          <field name="existingVisaOrPermitStatus" required="conditional" />
+          <field name="guardianTravelerIds" required="conditional" />
+          <field name="privacyStatus" />
+          <forbiddenField>documentImage</forbiddenField>
+          <forbiddenField>fullDocumentNumber</forbiddenField>
+          <forbiddenField>MRZ</forbiddenField>
+          <forbiddenField>biometricImage</forbiddenField>
+        </travelerDocumentProfileModel>
+        <borderJourneyLegModel>
+          <field name="legId" />
+          <field name="fromJurisdiction" />
+          <field name="toJurisdiction" />
+          <field name="departureAt" />
+          <field name="arrivalAt" />
+          <field name="transportMode" />
+          <field name="carrier" />
+          <field name="portOfEntry" />
+          <field name="travelPurpose" />
+          <field name="plannedStayDuration" />
+          <field name="transitType" />
+          <field name="selfTransfer" />
+          <field name="baggageRecheckRequired" />
+          <field name="terminalOrAirportChange" />
+          <field name="overnightTransit" />
+          <field name="applicableTravelerIds" />
+        </borderJourneyLegModel>
+        <documentTaskStateModel>
+          <axis name="applicability" values="REQUIRED,CONDITIONAL,NOT_REQUIRED,UNKNOWN,NOT_APPLICABLE" />
+          <axis name="actionability" values="NOT_YET_ACTIONABLE,ACTIONABLE,DEADLINE_NEAR,OVERDUE,BLOCKED" />
+          <axis name="application" values="NOT_STARTED,PREPARING,APPOINTMENT_SCHEDULED,SUBMITTED,UNDER_REVIEW,ADDITIONAL_INFO_REQUIRED,APPROVED,REJECTED,WITHDRAWN" />
+          <axis name="issuance" values="NOT_ISSUED,ISSUED,AVAILABLE_FOR_COLLECTION,RECEIVED,LOST_OR_DAMAGED,EXPIRED" />
+          <axis name="legCoverage" values="VALID_FOR_LEG,VALID_WITH_CONDITIONS,INVALID_FOR_LEG,INSUFFICIENT_VALIDITY,INSUFFICIENT_ENTRIES,UNKNOWN" />
+          <axis name="readiness" values="READY,SCHEDULED_ACTION_PENDING,ACTION_REQUIRED,WAITING_EXTERNAL,AT_RISK,BLOCKED,UNKNOWN" />
+        </documentTaskStateModel>
+        <preparationTaskModel>
+          <field name="taskId" />
+          <field name="category" />
+          <field name="scopeType" />
+          <field name="travelerIds" />
+          <field name="borderLegIds" />
+          <field name="necessity" />
+          <field name="priority" />
+          <field name="ownerId" />
+          <field name="dependencyTaskIds" />
+          <field name="blocksEntityIds" />
+          <field name="earliestActionAt" />
+          <field name="suggestedCompletionAt" />
+          <field name="hardDeadlineAt" />
+          <field name="timezone" />
+          <field name="recheckAt" />
+          <field name="officialChannel" />
+          <field name="status" />
+          <field name="verificationStatus" />
+          <field name="failureImpact" />
+          <field name="backup" />
+          <field name="evidence" />
+        </preparationTaskModel>
+        <readinessGates>
+          <gate code="GATE_A" name="目的地与路线可行性预检">在目的地候选和初步交通阶段识别明显来不及办理、无法满足中转或不适合先购买不可退产品的风险；允许 SCHEDULED_ACTION_PENDING，但必须展示剩余时间与依赖。</gate>
+          <gate code="GATE_B" name="不可逆预订前风险检查">在用户准备购买不可退交通、住宿或活动前展示所有 UNKNOWN、CONFLICTED、AT_RISK 与 BLOCKED；Agent 可继续比较方案，但不得显示“无证件风险”。</gate>
+          <gate code="GATE_C" name="出发前最终检查">只有所有成员、所有 P0 行程段的强制预约/票务/证件要求均已满足，且不存在关键 UNVERIFIED、CONFLICTED、STALE、OVERDUE 或 WAITING_EXTERNAL，才可显示全团 READY。</gate>
+        </readinessGates>
+        <rules>
+          <rule>PAID 不等于预约确认；预约确认不等于已出票；已出票的开放日期票不等于锁定具体时段。</rule>
+          <rule>团购券已购买但二次预约未确认时保持 BLOCKED 或 AT_RISK，不创建 FixedEvent。</rule>
+          <rule>NOT_RELEASED 与 SOLD_OUT 必须区分；R0 只生成 recheckAt 和待办，不声称正在后台持续监控。</rule>
+          <rule>WAITLISTED、REQUESTED 或 HELD 不得作为确定硬约束；候补期间必须保留可执行 Backup，且不得编造成功概率。</rule>
+          <rule>用户只打开外部入口、查看库存或接受 Agent 推荐时，不更新支付、预约、出票、申请或签发状态。</rule>
+          <rule>具体时段外部结果达到 CONFIRMED，且对象、日期、时间、参与人范围可验证时，才写入相应参与人范围内的 FixedEvent；开放日期权益只形成有效期约束。</rule>
+          <rule>部分成员成功时整体状态为部分完成；若缺失成员是儿童、照护者或用户要求必须同行者，Readiness Gate 必须阻塞。</rule>
+          <rule>CANCEL_PENDING 时原预约可能仍有效，不提前释放时间锚点；只有平台确认取消后才解除，退款状态独立保存。</rule>
+          <rule>证件规则必须与实际成员、证件、中转、自助转机、行李重托运、旅行目的和日期匹配；不得使用“护照统一需六个月有效”等无适用范围的通用结论。</rule>
+          <rule>签证已提交不等于获批，获批不等于签发/取得，取得不等于覆盖本次日期、目的和入境次数，也不构成登乘或入境保证。</rule>
+          <rule>证件与入境事实以对应主管机关及实际承运人官方来源为准；官方信息冲突或不足时标记 CONFLICTED/UNKNOWN 并转人工核验，不使用 UGC 作为入境结论。</rule>
+          <rule>修改成员国籍/居留地/证件、日期、旅行目的、航班、中转机场、航站楼、自助转机或运输方式时，只使受影响的 Traveler-Leg 结果失效并重算。</rule>
+          <rule>任务中心的 Agent 建议、用户选择、外部交易/申请结果和事实验证状态必须分开保存，任何状态变化均保留时间、来源与历史。</rule>
+        </rules>
+        <exitCondition>所有 P0 预约、票务、证件和入境任务均达到 READY 或合法 NOT_APPLICABLE；允许不阻塞的推荐/可选任务继续存在，但必须明确负责人、截止时间、recheckAt 和风险。R0 不生成通用行李清单。</exitCondition>
+      </requirement>
+      <exitCondition>用户接受具体住宿、每日路线、餐饮与完整时间轴建议；所有 P0 预约、票务、证件和入境任务均达到 READY 或合法 NOT_APPLICABLE，未完成的非阻塞事项具有明确负责人、截止时间、recheckAt 和风险。</exitCondition>
+    </stage>
+    <stage id="STAGE-6" name="旅行中执行、动态验证与局部重排" status="confirmed" priority="P1">
+      <entryCondition>旅行已经开始，TripPlan 进入 in_progress；用户可以只查看当日信息，也可以按次旅行主动开启有限动态监控。</entryCondition>
+      <scopeBoundary status="confirmed">
+        <included>当日行程信息、用户自愿回填执行状态、一次性位置辅助、高影响动态事实核验、三级提醒、事件去重，以及由用户决定是否进入的局部重排。</included>
+        <excluded>强制打卡、根据时间或位置自动判断到达/完成、未经授权的持续定位、完整轨迹保存、逐步导航、自动选择重排方案、自动交易，以及衣物或普通行李规划。</excluded>
+      </scopeBoundary>
+      <requirement id="FR-601" name="当日行程助手" status="confirmed" priority="P1">
+        <purpose>向用户清楚告知今天正在发生什么、下一步是什么以及哪些事项可能受影响；状态回填完全可选，Agent 不把旅行过程变成强制打卡流程。</purpose>
+        <subRequirements>
+          <subRequirement id="FR-601A" name="当前、下一项与剩余行程视图">展示当前计划项目、下一项目、当日剩余安排、下一 FIXED 时间节点、剩余缓冲，以及相关票务/预约凭证的已知就绪信息。</subRequirement>
+          <subRequirement id="FR-601B" name="可选的用户状态回填">允许用户通过快捷操作或自然语言主动报告准备出发、已出发、已到达、进行中、已完成、延迟、跳过或需要调整；任何行程项都不得要求必须打卡。</subRequirement>
+          <subRequirement id="FR-601C" name="禁止自动判定">时间经过、位置接近、打开页面、点击地图、点击外部平台链接或收到提醒，均不得自动标记已到达、进行中、已完成、支付、预约或出票。</subRequirement>
+          <subRequirement id="FR-601D" name="未知状态保真">用户没有回填时继续展示原时间轴，但 executionStatus 保持 UNKNOWN；不得为了界面完整而推断或补造执行结果。</subRequirement>
+          <subRequirement id="FR-601E" name="最小追问">只有用户请求重新判断或调整且当前执行上下文不足时，才一次追问一个会改变判断的最小问题，例如当前所在地或是否已离开上一项目。</subRequirement>
+          <subRequirement id="FR-601F" name="下一固定节点提示">基于已知当前时间、用户报告状态和可用 ETA，告知下一 FIXED 节点、剩余缓冲、必要票务/预约状态及可能受影响项目；信息不足时明确说明无法准确判断。</subRequirement>
+          <subRequirement id="FR-601G" name="位置与导航边界">默认使用用户手动选择的位置；用户可临时授权一次定位计算 ETA。系统不持续采集位置、不保存完整行动轨迹，也不提供逐步导航，只可跳转外部地图。</subRequirement>
+          <subRequirement id="FR-601H" name="进入重排的用户决定">延迟、跳过或需要调整只形成变化事实；Agent 先告知影响，只有用户选择“查看调整方案”后才进入 FR-603，不直接修改正式时间轴。</subRequirement>
+        </subRequirements>
+        <executionStatuses>
+          <status code="UNKNOWN">用户尚未回填，系统不得推断。</status>
+          <status code="PREPARING">用户主动表示正在准备。</status>
+          <status code="EN_ROUTE">用户主动表示已经出发。</status>
+          <status code="ARRIVED">用户主动表示已经到达。</status>
+          <status code="IN_PROGRESS">用户主动表示项目进行中。</status>
+          <status code="COMPLETED">用户主动表示已经完成。</status>
+          <status code="DELAYED">用户主动表示发生延迟。</status>
+          <status code="SKIPPED">用户主动表示跳过。</status>
+          <status code="NEEDS_ADJUSTMENT">用户主动请求评估调整。</status>
+        </executionStatuses>
+        <todayViewModel>
+          <field name="localDate" />
+          <field name="currentItem" />
+          <field name="nextItem" />
+          <field name="remainingItems" />
+          <field name="nextFixedItem" />
+          <field name="remainingBuffer" />
+          <field name="knownReadiness" />
+          <field name="userReportedExecutionStates" />
+          <field name="lastCheckedAt" />
+        </todayViewModel>
+        <rules>
+          <rule>用户可只查看信息而不提供任何执行状态；不回填不影响原行程查看。</rule>
+          <rule>位置授权必须是可选、一次性、可撤回的；拒绝定位后仍可手动选择位置。</rule>
+          <rule>Agent 的职责是告知事实、风险、影响和可选操作，用户保留继续、跳过、延迟或调整的决定权。</rule>
+        </rules>
+        <exitCondition>用户能够查看当日执行信息，并可在不被强制打卡、不被持续定位和不被自动修改状态的前提下主动报告变化。</exitCondition>
+      </requirement>
+      <requirement id="FR-602" name="动态验证与有限监控" status="confirmed" priority="P1">
+        <purpose>在用户按次旅行主动开启后，有限监控会影响实际执行的高影响变化，并以可信度、影响级别和可选方案告知用户；Agent 不替用户做决定。</purpose>
+        <subRequirements>
+          <subRequirement id="FR-602A" name="按次旅行主动开启">创建监控前必须获得用户对监控旅行、对象范围、有效时间和提醒方式的明确同意；旅行结束自动失效，用户可随时暂停或关闭。</subRequirement>
+          <subRequirement id="FR-602B" name="高影响对象限定">只监控已确认交通、已确认住宿、已确认具体预约、当日 Core 项目和下一 FIXED 节点；Flexible、Optional、普通价格和热门程度默认不监控。</subRequirement>
+          <subRequirement id="FR-602C" name="高影响变化类型">处理交通延误/取消/站点或时间变化、预约取消或时段变化、当日 Core 场所临时关闭/营业时间变化，以及确实影响户外项目或交通的天气变化。</subRequirement>
+          <subRequirement id="FR-602D" name="执行影响门槛">普通天气、拥堵、排队和营业信息变化只有在影响当前可执行性、消耗关键缓冲或威胁下一 FIXED 节点时才主动提醒；否则只更新当日页面。</subRequirement>
+          <subRequirement id="FR-602E" name="来源优先级">客观运营事实优先使用承运人、交通运营方、场馆、住宿、订单或预约页面等直接来源；地图只用于 ETA/拥堵估计；UGC 只能补充排队和体验，不能单独证明取消、关闭或营业变化。</subRequirement>
+          <subRequirement id="FR-602F" name="动态证据标注">每个观察保存 source、sourceEventAt、retrievedAt、validFor、targetEntity 和 VerificationStatus；ESTIMATED 必须使用预计/可能等表述，UNVERIFIED、CONFLICTED 或 STALE 不得包装成确定事实。</subRequirement>
+          <subRequirement id="FR-602G" name="三级提醒">按 CRITICAL、ACTION_REQUIRED 与 INFO 输出；立即提醒只用于已确认且需要立即关注的高影响变化，一般信息仅更新当日页面。</subRequirement>
+          <subRequirement id="FR-602H" name="事件去重与再次提醒">同一事件按实体、日期、变化类型与来源事件生成指纹去重；只有严重度升级、影响范围实质变化或临近决策截止时间时才能再次提醒。</subRequirement>
+          <subRequirement id="FR-602I" name="提醒中的用户选择">提醒只展示发生了什么、证据状态、影响对象、最晚决策时间及“保持原计划、查看调整方案、稍后决定”等选择，不默认选择或应用任何方案。</subRequirement>
+          <subRequirement id="FR-602J" name="状态轴隔离">监控观察和提醒不得自动修改用户选择、可用性、支付、预约、出票、证件、Readiness 或执行完成状态；外部变化必须按对应来源独立核验。</subRequirement>
+          <subRequirement id="FR-602K" name="无持续定位依赖">动态监控不得以持续 GPS 为前提；缺少用户当前位置时只基于已知计划和运营事实判断，并明确可达性精度限制。</subRequirement>
+        </subRequirements>
+        <alertLevels>
+          <level code="CRITICAL">
+            <definition>已确认的交通取消、预约取消、场所关闭，或基于充分事实可确定下一 FIXED 节点无法赶上。</definition>
+            <delivery>立即提醒，展示直接影响与可选操作。</delivery>
+          </level>
+          <level code="ACTION_REQUIRED">
+            <definition>延误加剧、关键缓冲即将耗尽，或存在较高概率错过固定节点且用户仍有决策窗口。</definition>
+            <delivery>提醒一次，并展示最晚决策时间；仅在升级、影响变化或临近截止时再次提醒。</delivery>
+          </level>
+          <level code="INFO">
+            <definition>事实发生变化，但暂不影响当日行程可执行性。</definition>
+            <delivery>只更新当日行程页面，不主动推送。</delivery>
+          </level>
+        </alertLevels>
+        <monitorScope>
+          <object code="CONFIRMED_TRANSPORT">已确认交通及其班次、站点和运营状态</object>
+          <object code="CONFIRMED_ACCOMMODATION">当前旅行相关的已确认住宿与入住可用性</object>
+          <object code="CONFIRMED_RESERVATION">已确认的具体对象、日期、时段和参与人预约</object>
+          <object code="TODAY_CORE">当日 Core 项目及直接运营事实</object>
+          <object code="NEXT_FIXED">下一个 FIXED 节点及可达性相关事实</object>
+        </monitorScope>
+        <rules>
+          <rule>监控只在用户明确开启的时间窗口内有效，旅行结束自动关闭。</rule>
+          <rule>相同变化但不影响执行时不生成行动提醒；提醒数量不能替代影响判断。</rule>
+          <rule>打开提醒、链接或地图不等于用户接受建议，也不改变任何交易或执行状态。</rule>
+          <rule>用户选择“查看调整方案”只表示请求 FR-603 计算候选方案，不代表接受或应用方案。</rule>
+        </rules>
+        <exitCondition>用户获得去重、可验证且与执行影响匹配的提醒，并始终保留是否保持原计划、查看调整方案或稍后决定的权利。</exitCondition>
+      </requirement>
+      <requirement id="FR-603" name="局部动态重排与变更对比" status="confirmed" priority="P1">
+        <purpose>在用户明确请求查看调整方案后，根据当前执行事实、剩余时间容量和已确认锚点生成局部候选；Agent 先判断缺口大小，再控制重排日期范围与候选数量，用户确认前不修改正式时间轴。</purpose>
+        <definition>“缺口”是动态变化后，原时间轴相对于剩余可用时间、移动/等待、非零缓冲和已确认锚点所产生的不可执行或高风险差额。小缺口只重排当天；只要可能波及次日已确认锚点即为大缺口，并直接生成覆盖当天与次日的联动候选供用户整体确认或拒绝。</definition>
+        <subRequirements>
+          <subRequirement id="FR-603A" name="重排请求与基线冻结">只有用户明确选择 VIEW_REPLAN 才创建 ReplanRequest；请求必须绑定触发变化、当前执行上下文、当前时间轴版本和计算时间，作为所有候选共同的原方案基线。</subRequirement>
+          <subRequirement id="FR-603B" name="缺口大小与次日锚点影响判断">检查当天剩余容量、移动/等待、必要缓冲及次日已确认锚点；明确不会影响次日已确认交通、FIXED 事件或 Must 预约时标记 SMALL，存在波及可能时标记 LARGE。</subRequirement>
+          <subRequirement id="FR-603C" name="调整范围边界">SMALL 只允许调整当天剩余时间块；LARGE 直接评估并生成当天与次日联动方案，在展示中明确说明受影响的次日锚点，不额外要求用户先确认是否开始连带评估。</subRequirement>
+          <subRequirement id="FR-603D" name="动态候选数量与差异化">候选数量为一至三个：SMALL 默认只生成一个最小改动候选；LARGE 生成二至三个在锚点保护、体验保留、缓冲/强度或额外成本上具有实质差异的有效候选，不得用细微时间挪动制造伪差异。</subRequirement>
+          <subRequirement id="FR-603E" name="原方案与候选变更对比">每个候选必须相对同一原方案基线展示新增、删除、跳过、改时、换序、移动方式和受影响日期，并单独列出可量化代价，例如少去一个景点、缓冲仅剩十分钟、增加费用或提高连续活动强度。</subRequirement>
+          <subRequirement id="FR-603F" name="整体确认或拒绝">当天与次日联动内容属于同一个候选，用户只能整体确认、整体拒绝或改选其他候选；查看、展开、比较、稍后决定均不得应用候选或改变正式时间轴。</subRequirement>
+          <subRequirement id="FR-603G" name="版本化写回与决策留痕">用户确认仍有效的候选后，生成新的 FinalTimelineVersion，并在同一次写回中更新当前时间轴；DecisionLog 同步记录确认时间、用户理由、被替代方案/版本、选定候选及未选候选。</subRequirement>
+          <subRequirement id="FR-603H" name="预约票务关联提醒">候选若删除或跳过已关联且已确认预约/票务的项目，比较与写回时必须同步提示用户处理对应 PreparationTask，例如可能需要外部取消、改签或退款；Agent 不自动取消任何外部预约、票务或订单。</subRequirement>
+          <subRequirement id="FR-603I" name="候选时效与强制重算">候选绑定 validUntil、依赖事实和当前时间轴版本；超出时效或关键依赖变化后自动标记 STALE 且禁止写回。用户再次明确请求查看调整时，无论旧候选是否仍有效，都必须重新计算并将旧候选标记 SUPERSEDED。</subRequirement>
+        </subRequirements>
+        <gapAssessmentModel>
+          <field name="requestId" />
+          <field name="assessedAt" />
+          <field name="currentLocalDate" />
+          <field name="remainingCapacity" />
+          <field name="requiredTravelWaitAndBuffer" />
+          <field name="nextDayConfirmedAnchorIds" />
+          <field name="nextDayAnchorImpact" values="NONE,POSSIBLE" />
+          <field name="gapSize" values="SMALL,LARGE" />
+          <field name="affectedDates" />
+          <field name="explanation" />
+        </gapAssessmentModel>
+        <replanCandidateModel>
+          <field name="candidateId" />
+          <field name="requestId" />
+          <field name="baseTimelineVersionId" />
+          <field name="generatedAt" />
+          <field name="validUntil" />
+          <field name="status" />
+          <field name="affectedDates" />
+          <field name="timelineChanges" />
+          <field name="protectedAnchorIds" />
+          <field name="affectedAnchorIds" />
+          <field name="removedOrSkippedItems" />
+          <field name="remainingBuffers" />
+          <field name="loadAndPaceImpact" />
+          <field name="incrementalCost" />
+          <field name="tradeoffSummary" />
+          <field name="dependentObservationIds" />
+          <field name="dependentVerificationStatuses" />
+          <field name="affectedPreparationTaskIds" />
+          <field name="externalActionWarnings" />
+        </replanCandidateModel>
+        <candidateStates>
+          <state code="ACTIVE">候选仍在时效内，依赖事实和基线版本未发生影响性变化，可供用户确认。</state>
+          <state code="STALE">候选已超出时效或关键依赖变化，禁止写回。</state>
+          <state code="SUPERSEDED">用户再次请求查看调整或新的候选批次生成，旧候选仅保留审计记录。</state>
+          <state code="SELECTED">用户已明确选择，等待完成有效性复核与写回。</state>
+          <state code="REJECTED">用户已明确拒绝。</state>
+          <state code="APPLIED">候选已生成新版本并更新当前时间轴。</state>
+        </candidateStates>
+        <comparisonDimensions>
+          <dimension>已确认交通、FIXED 事件与 Must 预约的保护或影响情况</dimension>
+          <dimension>新增、删除、跳过、改时、换序和移动方式变化</dimension>
+          <dimension>当天与次日剩余缓冲、活动强度和连续执行风险</dimension>
+          <dimension>保留或牺牲的 Core/Must/Preferred/Optional 体验</dimension>
+          <dimension>新增现金成本、外部改签/取消动作与 PreparationTask 影响</dimension>
+        </comparisonDimensions>
+        <rules>
+          <rule>“不影响次日已确认锚点”是 SMALL 的必要条件；无法排除波及次日锚点时按 LARGE 处理，不得为了缩小范围而忽略未知影响。</rule>
+          <rule>SMALL 只生成一个当天最小改动候选；LARGE 应生成二至三个有效联动候选。若硬约束下只有一个有效解，必须只展示该有效解并说明无法形成多个候选的原因，不得输出明知不可执行的陪衬方案。</rule>
+          <rule>LARGE 的每个候选均同时覆盖当天与次日，并在一张对比中整体展示；生成联动候选不等于应用方案，因此无需在计算前增加一次独立授权。</rule>
+          <rule>每个候选必须列出变化和代价；即使某候选最推荐，也不得隐藏删减项目、缓冲收缩、强度上升、额外费用或外部任务。</rule>
+          <rule>只有 ACTIVE 候选可被确认写回；SELECTED 候选在写回前若变为 STALE，必须停止应用并重新计算。</rule>
+          <rule>候选确认采用版本化原子写回：新建 FinalTimelineVersion、更新 currentTimelineVersionId/当前时间轴、写入 DecisionLog 三者必须同时成功或全部不生效。</rule>
+          <rule>删除或跳过已确认预约/票务项目只产生外部处理提醒与 PreparationTask 更新；支付、改签、取消、退款和订单状态仍由用户在第三方平台办理并回填。</rule>
+          <rule>候选 validUntil 取决于最短依赖事实时效；当前执行状态、动态观察、FIXED 锚点或基线时间轴版本发生影响性变化时，相关 ACTIVE 候选自动转为 STALE。</rule>
+          <rule>用户再次选择 VIEW_REPLAN 时强制创建新的 ReplanRequest 和候选批次，不直接复用上一批候选。</rule>
+        </rules>
+        <exitCondition>用户能够基于同一原方案查看有明确范围、数量、变化与代价的有效候选；只有用户整体确认仍为 ACTIVE 的候选后，系统才版本化更新当前时间轴、写入 DecisionLog，并对受影响的已确认预约/票务生成外部处理提醒。</exitCondition>
+      </requirement>
+      <exitCondition status="confirmed">旅行中变化可按次日已确认锚点影响分为小缺口或大缺口，形成一至三个可比较、可失效且需用户确认的局部调整方案；确认后完成可追溯的版本化写回，不自动执行外部取消、改签或交易。</exitCondition>
+    </stage>
+    <stage id="STAGE-7" name="旅行后闭环" status="planned" priority="P2">
+      <requirement id="FR-701" name="实际消费、付款人与多人分摊" status="planned" />
+      <requirement id="FR-702" name="计划与实际差异复盘" status="planned" />
+      <requirement id="FR-703" name="经用户授权的长期偏好记忆" status="planned" />
+    </stage>
+  </functionalRequirements>
+  <decisionModel status="confirmed">
+    <hardConstraints>
+      <item>共同可用日期和必须返回时间</item>
+      <item>预算上限</item>
+      <item>护照、签证和证件条件</item>
+      <item>身体、行动、照护和高海拔等限制</item>
+      <item>用户标记的 mustHave 与 mustAvoid</item>
+      <item>营业时间、已确认具体时段的预约、交通班次和有效票务约束</item>
+      <item>固定时间餐厅/活动预约与最晚入场窗口</item>
+      <item>酒店合法入住、儿童政策、房型容量与用户明确分房要求</item>
+    </hardConstraints>
+    <softPreferences>
+      <item>兴趣内容与成员满意度</item>
+      <item>轻松、适中或紧凑节奏</item>
+      <item>住宿品质、餐饮和消费优先级</item>
+      <item>热门与小众、人流和天气偏好</item>
+      <item>交通舒适度和换乘接受度</item>
+      <item>Day Skeleton 的空间连续性与餐饮区域便利</item>
+      <item>连续住宿稳定性与减少不必要换酒店</item>
+    </softPreferences>
+    <optimizationOrder>
+      <step order="1">保证可行性与安全。</step>
+      <step order="2">满足全部硬性约束。</step>
+      <step order="3">最大化群体总体满意度，同时避免牺牲弱势成员基本需求。</step>
+      <step order="4">减少绕路、等待、换乘、无效通勤和无必要的换住宿。</step>
+      <step order="5">联合优化 Day Skeleton、Stay Segment、住宿成本、体验、舒适度和风险，并提供差异化方案。</step>
+      <step order="6">保留餐饮、天气、营业变化和突发情况的缓冲时间与替代方案。</step>
+    </optimizationOrder>
+    <explainability>每次推荐必须说明满足了哪些条件、牺牲了哪些偏好、主要风险以及可替代方案。</explainability>
+    <verificationRule>会锁定行程执行的硬时间约束必须来自已验证数据或用户可验证的订单/预约；估计值可辅助规划但不得伪装成事实，未验证或冲突信息只能生成带警告的候选建议。</verificationRule>
+  </decisionModel>
+  <informationGovernance status="confirmed">
+    <evidencePolicy>
+      <rule>客观事实和主观体验分开存储和呈现。</rule>
+      <rule>每条动态事实保存来源、查询时间、适用日期和可信度。</rule>
+      <rule>官方信息与 UGC 冲突时，客观运营事实以最新官方信息为准。</rule>
+      <rule>不得把转载数量当成多来源一致性。</rule>
+      <rule>信息不足时输出未知或待确认，不得补造。</rule>
+    </evidencePolicy>
+    <compliancePolicy>
+      <rule>优先采用公开、授权或官方提供的数据访问方式。</rule>
+      <rule>保留来源链接，避免长篇复制受版权保护的内容。</rule>
+      <rule>遵守第三方平台的访问、隐私和自动化规则。</rule>
+      <rule>R0 不接收证件原件、照片、完整号码或 MRZ；证件与签证申请由用户直接在官方渠道提交，Agent 只记录最小化结构化事实和准备状态。</rule>
+      <rule>签证、过境、入境、海关、卫生和承运要求按各自主管机关职责引用官方来源；信息冲突时标记 CONFLICTED，不输出法律保证。</rule>
+    </compliancePolicy>
+    <recommendationBoundary status="confirmed">
+      <agentRole>Agent 负责检索、验证、比较、分析、规划、推荐、风险解释和备选方案，不把推荐自动视为用户决定。</agentRole>
+      <userAuthority>用户保留目的地、交通、住宿、餐厅、景点、行程强度、预订渠道以及是否购买/预约/支付的最终决定权。</userAuthority>
+      <irreversibleActionRule>不可逆或会产生费用/法律承诺的购买、支付、正式预约、退订等动作默认由用户在第三方平台完成；除非未来产品明确提供授权执行能力并建立单独确认流程。</irreversibleActionRule>
+      <confirmationRule>只有用户明确选择/确认后，推荐结果才可写入用户确认状态；Agent 自主推荐与用户确认必须在状态模型中区分。</confirmationRule>
+    </recommendationBoundary>
+    <verificationPolicy status="confirmed">
+      <statuses>
+        <status code="VERIFIED">来自官方、交易/订单页面、可验证用户订单或其他高可信来源，并与目标日期/对象一致。</status>
+        <status code="CORROBORATED">多个独立且相关的近期来源对体验、排队、建议时段等非官方信号形成一致支持。</status>
+        <status code="ESTIMATED">基于已验证或较可靠数据计算出的移动、游玩、排队、价格区间等估计。</status>
+        <status code="UNVERIFIED">当前无法核实或信息尚未公布。</status>
+        <status code="CONFLICTED">两个或以上相关可靠来源存在未解决冲突。</status>
+        <status code="STALE">信息已经超出允许时效窗口，不能直接用于当前执行判断。</status>
+      </statuses>
+      <rules>
+        <rule>Raw Search Result 不得直接进入正式 Recommendation；必须先完成字段标准化、来源检查、时效检查、冲突检测和 VerificationStatus 标注。</rule>
+        <rule>客观运营事实优先使用最新官方或直接交易/预订来源核验；UGC 不用于覆盖官方营业、票务、政策等事实。</rule>
+        <rule>主观体验没有单一官方真值，应通过多个独立作者、相近季节、近期内容和去转载后的证据进行 CORROBORATED 判断。</rule>
+        <rule>VERIFIED 可直接作为硬约束；ESTIMATED 只能作为规划参数并保留缓冲；UNVERIFIED/CONFLICTED/STALE 必须显式提示并禁止静默锁定不可逆行程。</rule>
+        <rule>每条动态证据必须保留 source、retrievedAt、validFor/targetDate 和 VerificationStatus；用户应能查看关键推荐依据。</rule>
+      </rules>
+    </verificationPolicy>
+  </informationGovernance>
+  <agentArchitecture status="proposed">
+    <orchestrator id="AGENT-ROOT" name="旅行规划主 Agent">
+      <responsibilities>管理对话状态、决定下一问题、调用专业模块、处理冲突、生成解释并让用户确认关键决策。</responsibilities>
+    </orchestrator>
+    <skills>
+      <skill id="SKILL-01">旅行成员、家庭单元与照护约束分析</skill>
+      <skill id="SKILL-02">目的地筛选与多目标决策</skill>
+      <skill id="SKILL-03">攻略检索、去重和可信度判断</skill>
+      <skill id="SKILL-04">交通门到门比较</skill>
+      <skill id="SKILL-05">POI空间聚类、Day Skeleton 与 Stay Segment 联合规划</skill>
+      <skill id="SKILL-06">住宿多平台搜索、实体/房型匹配与 Offer 标准化</skill>
+      <skill id="SKILL-07">多人房型组合、住宿成本与套餐价值计算</skill>
+      <skill id="SKILL-08">每日路线精排、日型识别、时间预算与超载检测</skill>
+      <skill id="SKILL-09">餐厅多平台研究、门店匹配、Meal Plan 与备选生成</skill>
+      <skill id="SKILL-10">Verification Gate、冲突检测与完整时间轴编译</skill>
+      <skill id="SKILL-11">预约票务多轴状态、逐成员证件矩阵、任务依赖与 Readiness Gate</skill>
+      <skill id="SKILL-12" status="confirmed" confirmedThrough="FR-603">非强制打卡的当日执行上下文、高影响动态验证、有限监控、缺口分级、候选对比与版本化局部重排</skill>
+    </skills>
+    <externalCapabilities>
+      <capability>网页和社交内容检索</capability>
+      <capability>地图、地理编码、距离和路线</capability>
+      <capability>航班、铁路、巴士、轮船和租车数据</capability>
+      <capability>酒店、门票和预约数据</capability>
+      <capability>天气、客流、活动、闭园和交通状态</capability>
+      <capability>用户授权提供的非证件文件、链接、图片与截图解析；R0 明确拒绝证件原件、照片、完整号码与 MRZ</capability>
+      <capability>携程、飞猪、美团、抖音等住宿/本地生活数据访问能力</capability>
+      <capability>餐厅营业、预约、排队与本地生活数据</capability>
+      <capability>目的地及中转地移民、外交、使领馆、海关、卫生与实际承运人官方规则</capability>
+    </externalCapabilities>
+    <shapeDecision>目前需求复杂度更适合以旅行规划主 Agent 为编排核心，以专业 Skills 分别负责证据研究、空间聚类/Day Skeleton、Stay Segment、住宿多平台归一化、每日路线精排、餐厅 Meal Plan、Verification Gate、时间轴编译、预约票务/证件任务中心，以及旅行中当日信息、高影响动态验证、缺口分级、候选对比与版本化局部重排；外部插件或工具负责地图、OTA、本地生活、官方运营、证件规则、天气和动态数据。Agent 只告知事实、风险、影响与可选方案，最终选择和不可逆交易由用户控制。R0 的 recheckAt 仅为用户待办；R1 仅增加出发前有限监控；R2/STAGE-6 才提供按次旅行主动开启的旅行中有限监控与用户请求触发的局部重排。</shapeDecision>
+  </agentArchitecture>
+  <stateModel status="proposed">
+    <entity name="TripPlan">
+      <field name="tripId" type="string" />
+      <field name="status" type="enum" values="draft,researching,confirmed,booked,in_progress,completed" />
+      <field name="currentStage" type="string" />
+      <field name="departure" type="DepartureState" />
+      <field name="destinationIntent" type="DestinationIntentState" />
+      <field name="travelers" type="TravelerGroupState" />
+      <field name="travelTime" type="TravelTimeState" />
+      <field name="preferences" type="PreferenceState" />
+      <field name="budget" type="BudgetState" />
+      <field name="destinationResearch" type="ResearchState" />
+      <field name="transport" type="TransportState" />
+      <field name="accommodation" type="AccommodationPlanningState" />
+      <field name="careRelationships" type="CareRelationship[]" />
+      <field name="daySkeletons" type="DaySkeleton[]" status="confirmed" />
+      <field name="staySegments" type="StaySegment[]" status="confirmed" />
+      <field name="bookingProfile" type="BookingProfile" status="confirmed" />
+      <field name="accommodationOffers" type="NormalizedAccommodationOffer[]" status="confirmed" />
+      <field name="accommodationOfferVerificationReports" type="AccommodationOfferVerificationReport[]" status="confirmed" />
+      <field name="dailyRoutePlans" type="DailyRoutePlan[]" status="confirmed" />
+      <field name="mealPlans" type="MealPlan[]" status="confirmed" />
+      <field name="timelineVerificationReports" type="TimelineVerificationReport[]" status="confirmed" />
+      <field name="finalTimelines" type="FinalTimeline[]" status="confirmed" />
+      <field name="preparationTasks" type="PreparationTask[]" status="confirmed" />
+      <field name="reservationTicketTasks" type="ReservationTicketTask[]" status="confirmed" />
+      <field name="externalOrders" type="ExternalOrder[]" status="confirmed" />
+      <field name="reservationRecords" type="ReservationRecord[]" status="confirmed" />
+      <field name="ticketEntitlements" type="TicketEntitlement[]" status="confirmed" />
+      <field name="travelerDocumentProfiles" type="TravelerDocumentProfile[]" status="confirmed" />
+      <field name="borderJourneyLegs" type="BorderJourneyLeg[]" status="confirmed" />
+      <field name="travelerLegRequirements" type="TravelerLegRequirement[]" status="confirmed" />
+      <field name="documentPreparationTasks" type="DocumentPreparationTask[]" status="confirmed" />
+      <field name="travelReadinessReports" type="TravelReadinessReport[]" status="confirmed" />
+      <field name="itinerary" type="ItineraryState" status="confirmed" />
+      <field name="execution" type="ExecutionState" status="confirmed" />
+      <field name="monitorSubscriptions" type="MonitorSubscription[]" status="confirmed" />
+      <field name="dynamicObservations" type="DynamicObservation[]" status="confirmed" />
+      <field name="alertRecords" type="AlertRecord[]" status="confirmed" />
+      <field name="replanRequests" type="ReplanRequest[]" status="confirmed" />
+      <field name="replanCandidates" type="ReplanCandidate[]" status="confirmed" />
+      <field name="finalTimelineVersions" type="FinalTimelineVersion[]" status="confirmed" />
+      <field name="currentTimelineVersionId" type="string?" status="confirmed" />
+      <field name="evidence" type="Evidence[]" />
+      <field name="decisions" type="DecisionLog[]" status="confirmed" />
+    </entity>
+    <entity name="ExecutionState" status="confirmed">
+      <field name="activeDate" type="localDate" />
+      <field name="currentItemId" type="string?" />
+      <field name="nextFixedItemId" type="string?" />
+      <field name="userReportedItemStates" type="UserReportedExecutionState[]" />
+      <field name="manualLocation" type="ApproximateLocation?" />
+      <field name="oneTimeLocation" type="EphemeralLocation?" />
+      <field name="remainingBuffer" type="duration?" />
+      <field name="lastCheckedAt" type="datetime?" />
+    </entity>
+    <entity name="UserReportedExecutionState" status="confirmed">
+      <field name="timelineItemId" type="string" />
+      <field name="status" type="enum" values="UNKNOWN,PREPARING,EN_ROUTE,ARRIVED,IN_PROGRESS,COMPLETED,DELAYED,SKIPPED,NEEDS_ADJUSTMENT" />
+      <field name="reportedBy" type="travelerId" />
+      <field name="reportedAt" type="datetime" />
+      <field name="note" type="string?" />
+    </entity>
+    <entity name="MonitorSubscription" status="confirmed">
+      <field name="subscriptionId" type="string" />
+      <field name="tripId" type="string" />
+      <field name="scopeEntityIds" type="string[]" />
+      <field name="startsAt" type="datetime" />
+      <field name="expiresAt" type="datetime" />
+      <field name="notificationPolicy" type="NotificationPolicy" />
+      <field name="consentRecordedAt" type="datetime" />
+      <field name="status" type="enum" values="ACTIVE,PAUSED,EXPIRED,CANCELLED,ERROR" />
+      <field name="lastCheckedAt" type="datetime?" />
+    </entity>
+    <entity name="DynamicObservation" status="confirmed">
+      <field name="observationId" type="string" />
+      <field name="targetEntityId" type="string" />
+      <field name="factType" type="string" />
+      <field name="previousValue" type="any?" />
+      <field name="currentValue" type="any" />
+      <field name="source" type="EvidenceSource" />
+      <field name="sourceEventAt" type="datetime?" />
+      <field name="retrievedAt" type="datetime" />
+      <field name="validFor" type="timeRange" />
+      <field name="verificationStatus" type="VerificationStatus" />
+      <field name="executionImpact" type="string" />
+    </entity>
+    <entity name="AlertRecord" status="confirmed">
+      <field name="alertId" type="string" />
+      <field name="deduplicationFingerprint" type="string" />
+      <field name="observationIds" type="string[]" />
+      <field name="level" type="enum" values="CRITICAL,ACTION_REQUIRED,INFO" />
+      <field name="affectedEntityIds" type="string[]" />
+      <field name="impactSummary" type="string" />
+      <field name="decisionDeadlineAt" type="datetime?" />
+      <field name="availableUserChoices" type="enum[]" values="KEEP_PLAN,VIEW_REPLAN,LATER" />
+      <field name="firstNotifiedAt" type="datetime?" />
+      <field name="lastNotifiedAt" type="datetime?" />
+    </entity>
+    <entity name="ReplanRequest" status="confirmed">
+      <field name="requestId" type="string" />
+      <field name="requestedAt" type="datetime" />
+      <field name="requestedBy" type="travelerId" />
+      <field name="triggeringObservationIds" type="string[]" />
+      <field name="baseTimelineVersionId" type="string" />
+      <field name="currentLocalDate" type="localDate" />
+      <field name="gapSize" type="enum" values="SMALL,LARGE" />
+      <field name="nextDayConfirmedAnchorIds" type="string[]" />
+      <field name="affectedDates" type="localDate[]" />
+      <field name="assessmentExplanation" type="string" />
+    </entity>
+    <entity name="ReplanCandidate" status="confirmed">
+      <field name="candidateId" type="string" />
+      <field name="requestId" type="string" />
+      <field name="baseTimelineVersionId" type="string" />
+      <field name="generatedAt" type="datetime" />
+      <field name="validUntil" type="datetime" />
+      <field name="status" type="enum" values="ACTIVE,STALE,SUPERSEDED,SELECTED,REJECTED,APPLIED" />
+      <field name="affectedDates" type="localDate[]" />
+      <field name="timelineChanges" type="PlanChangeDiff[]" />
+      <field name="tradeoffs" type="CandidateTradeoff[]" />
+      <field name="dependentObservationIds" type="string[]" />
+      <field name="affectedPreparationTaskIds" type="string[]" />
+      <field name="externalActionWarnings" type="string[]" />
+    </entity>
+    <entity name="FinalTimelineVersion" status="confirmed">
+      <field name="timelineVersionId" type="string" />
+      <field name="parentTimelineVersionId" type="string?" />
+      <field name="createdAt" type="datetime" />
+      <field name="sourceReplanCandidateId" type="string?" />
+      <field name="affectedDates" type="localDate[]" />
+      <field name="timelineSnapshot" type="FinalTimeline[]" />
+      <field name="replacedTimelineVersionId" type="string?" />
+      <field name="isCurrent" type="boolean" />
+    </entity>
+    <entity name="DecisionLog" status="confirmed">
+      <field name="decisionId" type="string" />
+      <field name="decisionType" type="string" />
+      <field name="decidedAt" type="datetime" />
+      <field name="decidedBy" type="travelerId" />
+      <field name="reason" type="string?" />
+      <field name="selectedAlternativeId" type="string" />
+      <field name="rejectedAlternativeIds" type="string[]" />
+      <field name="replacedPlanVersionId" type="string" />
+      <field name="newPlanVersionId" type="string" />
+    </entity>
+    <stateRules>
+      <rule>每个 Agent 回合从 TripPlan 读取已知状态，禁止无理由重复提问。</rule>
+      <rule>用户修改上游字段时，只失效并重算受影响的下游结果。</rule>
+      <rule>用户确认的关键决策写入 DecisionLog，保存时间、理由和替代方案。</rule>
+      <rule>动态数据必须带 retrievedAt 与 validFor。</rule>
+      <rule>Day Skeleton 是半日级规划状态，用于联合推导餐饮区域、住宿区域和住宿夜数；具体住宿确定后可继续精排，但不得无理由推翻用户已确认的固定事件。</rule>
+      <rule>Stay Segment 由连续 Day Skeleton 的空间连续性与换住宿成本共同生成，一个目的地可以包含一个或多个 Stay Segment。</rule>
+      <rule>具体住宿 Offer 必须绑定查询渠道、入住日期、房型/套餐、价格快照与 retrievedAt；动态价格不得长期复用。</rule>
+      <rule>住宿推荐和跳转前必须生成 AccommodationOfferVerificationReport；目标区域无解时按同区域、相邻区域、调整 Stay Segment、请求用户放宽的顺序回退。</rule>
+      <rule>DailyRoutePlan 记录每个旅行日的 dayType、时间预算、活动顺序、RouteLeg、Core/Flexible/Backup、强度与冲突；餐厅确定后允许局部回写。</rule>
+      <rule>MealPlan 记录 Meal Slot、主选/备选门店、预约状态、排队风险、预计用餐时长、预算、绕行程度和证据。</rule>
+      <rule>FinalTimeline 中每个时间块必须标记 FIXED/RECOMMENDED/FLEXIBLE/OPTIONAL/BACKUP，并关联 VerificationStatus；推荐状态与用户确认状态分开保存。</rule>
+      <rule>关键动态事实进入 FinalTimeline 前必须生成 TimelineVerificationReport；UNVERIFIED、CONFLICTED 或 STALE 项不能被静默视为确定约束。</rule>
+      <rule>PreparationTask 跨阶段存在；计划对象新增、删除、变更或外部结果回填时，任务只更新受影响依赖，不重建全部任务。</rule>
+      <rule>预约票务必须分别保存用户选择、可用性、支付、预约、出票和验证状态；打开外部链接、PAID、WAITLISTED 或用户接受建议不能自动成为已完成或 FIXED。</rule>
+      <rule>具体时段预约确认后按实际参与人范围写回 FixedEvent；开放日期票、部分成员成功或候补状态不能生成全团确定时间锚点。</rule>
+      <rule>证件问题只在规则判断确有必要时渐进询问；R0 禁止 documentImage、fullDocumentNumber、MRZ 和 biometricImage 进入 TripPlan。</rule>
+      <rule>证件结论绑定 Traveler、TravelDocument 与 BorderJourneyLeg；成员、证件、日期、中转或运输方式变化时只使相关 Traveler-Leg 结果失效。</rule>
+      <rule>recheckAt 在 R0 只表示用户再次进入时应重新核验的待办，不表示系统已创建后台轮询、提醒或监控。</rule>
+      <rule>R0 不创建 PackingPlan、BagPlan 或通用衣物/随身行李状态；特殊物品只作为交通、证件或活动约束处理。</rule>
+      <rule>旅行中执行状态默认 UNKNOWN，只有用户主动回填才能变更；时间、位置、页面访问、链接点击和提醒送达均不能自动标记到达或完成。</rule>
+      <rule>当日行程信息无需打卡即可查看；需要重新判断而上下文不足时，Agent 一次只询问一个最小状态问题。</rule>
+      <rule>一次性位置只用于当前 ETA 或可达性判断，不转化为持续定位订阅，也不保存完整行动轨迹。</rule>
+      <rule>MonitorSubscription 必须绑定单次旅行、明确对象范围、同意时间和 expiresAt；用户可暂停或关闭，旅行结束后自动失效。</rule>
+      <rule>DynamicObservation 先经过来源、时效、对象匹配和执行影响判断，再决定是否创建 AlertRecord。</rule>
+      <rule>同一动态事件按指纹去重；只有级别升级、影响范围实质变化或临近决策截止时允许再次提醒。</rule>
+      <rule>AlertRecord 只告知事实、证据状态、影响和可选操作，不自动修改交易、证件、Readiness、执行完成或用户决策状态。</rule>
+      <rule>只有用户明确选择 VIEW_REPLAN 才进入 FR-603；请求查看方案不等于接受或应用方案。</rule>
+      <rule>FR-603 以次日已确认交通、FIXED 事件或 Must 预约是否可能受影响作为缺口分界；SMALL 仅调整当天，LARGE 生成覆盖当天与次日的联动候选。</rule>
+      <rule>ReplanCandidate 必须绑定基线时间轴版本、生成时间、validUntil、依赖事实、变更差异与代价；STALE 或 SUPERSEDED 候选不得写回。</rule>
+      <rule>用户再次请求查看调整时必须重新计算候选，不能直接复用上一批结果。</rule>
+      <rule>用户确认候选后，新建 FinalTimelineVersion、更新当前时间轴与 currentTimelineVersionId、写入 DecisionLog 必须作为同一原子操作完成。</rule>
+      <rule>候选删除或跳过已确认预约/票务项目时，只更新相关 PreparationTask 并提醒用户外部处理，不自动改变支付、预约、出票、取消或退款状态。</rule>
+    </stateRules>
+  </stateModel>
+  <nonFunctionalRequirements>
+    <requirement id="NFR-001" name="可解释性" priority="P0" status="confirmed">推荐必须包含理由、主要权衡、风险和来源。</requirement>
+    <requirement id="NFR-002" name="时效性" priority="P0" status="confirmed">动态事实必须展示更新时间；过期信息不可静默使用。</requirement>
+    <requirement id="NFR-003" name="隐私最小化" priority="P0" status="confirmed">只收集完成旅行规划所需的信息；健康、位置和证件信息应可跳过、修改和删除。</requirement>
+    <requirement id="NFR-004" name="安全边界" priority="P0" status="confirmed">医疗、安全、签证和法规信息应优先引用官方来源，并明确系统不替代专业判断。</requirement>
+    <requirement id="NFR-005" name="状态可恢复" priority="P0" status="proposed">对话中断或跨设备后可以从最近确认节点继续。</requirement>
+    <requirement id="NFR-006" name="局部重算" priority="P0" status="confirmed">修改成员、日期、中转、景点、固定餐厅、住宿、预约或证件事实时，只失效受影响的 Day Skeleton、Stay Segment、任务、Traveler-Leg 或日程片段，避免重新执行全部搜索和规划。</requirement>
+    <requirement id="NFR-007" name="失败降级" priority="P0" status="confirmed">数据源不可用时说明缺口，改用其他来源或要求用户提供信息；无法验证时保持 UNKNOWN/UNVERIFIED，不得伪造结果。</requirement>
+    <requirement id="NFR-008" name="证据可验证性" priority="P0" status="confirmed">进入推荐和最终时间轴的关键动态数据必须完成验证状态标注并保留证据链；无法验证时必须显式降级为候选/估计/未知。</requirement>
+    <requirement id="NFR-009" name="用户最终决策权" priority="P0" status="confirmed">系统必须区分 Agent 推荐、用户确认和外部平台交易状态，不能把推荐自动升级为用户决定或已预订状态。</requirement>
+    <requirement id="NFR-010" name="证件数据禁区" priority="P0" status="confirmed">R0 完全禁止上传或保存证件原件、照片、完整号码、MRZ 与生物识别图像；证件问题仅在必要时按最小事实逐项询问，允许跳过、修改和删除。</requirement>
+    <requirement id="NFR-011" name="任务与交易状态完整性" priority="P0" status="confirmed">推荐、用户选择、支付、预约、出票、申请、签发、事实验证和日程绑定必须分开保存；任何一轴变化不得隐式升级其他轴。</requirement>
+    <requirement id="NFR-012" name="分版本监控边界" priority="P0" status="confirmed">R0 只生成任务、截止时间和 recheckAt，不持续后台监控；R1 只增加出发前放票、库存、候补、审批窗口和规则变化的有限监控；R2/STAGE-6 才提供用户按次旅行主动开启的旅行中高影响对象监控。</requirement>
+    <requirement id="NFR-013" name="旅行中位置隐私" priority="P0" status="confirmed">当日助手和动态监控不得要求持续定位；一次性位置授权必须可选、可撤回、限当前判断使用且不保存完整轨迹，拒绝定位后仍可手动提供位置。</requirement>
+    <requirement id="NFR-014" name="提醒克制与状态隔离" priority="P0" status="confirmed">提醒必须先经过执行影响判断并按事件去重；提醒送达、打开或用户查看方案不得隐式修改交易、证件、Readiness、执行完成或用户决策状态。</requirement>
+    <requirement id="NFR-015" name="重排候选时效安全" priority="P0" status="confirmed">局部重排候选必须绑定基线版本、依赖事实与 validUntil；过期、依赖变化或被新请求替代的候选不得写回当前时间轴。</requirement>
+    <requirement id="NFR-016" name="重排写回一致性" priority="P0" status="confirmed">用户确认候选后的新时间轴版本、当前时间轴指针、DecisionLog 与受影响 PreparationTask 必须保持一致；任一关键写回失败不得形成部分应用状态。</requirement>
+  </nonFunctionalRequirements>
+  <successMetrics status="proposed">
+    <metric id="M-001">完成基础信息采集所需的中位对话轮数</metric>
+    <metric id="M-002">用户无需修改即可确认目的地候选的比例</metric>
+    <metric id="M-003">带可追溯来源的动态事实覆盖率</metric>
+    <metric id="M-004">交通和行程推荐被用户采纳的比例</metric>
+    <metric id="M-005">用户修改上游条件后局部重算成功率</metric>
+    <metric id="M-006">旅行中计划外变化后的恢复时间</metric>
+    <metric id="M-007">攻略事实错误、过期和无法核实信息的用户反馈率</metric>
+    <metric id="M-008">Day Skeleton 经用户确认后无需大范围重排即可进入精排的比例</metric>
+    <metric id="M-009">Stay Segment 的住宿夜数/区域方案被用户直接接受的比例</metric>
+    <metric id="M-010">住宿多平台 Offer 的同酒店/同房型匹配准确率与错误合并率</metric>
+    <metric id="M-011">最终住宿价格与用户跳转到订单页价格的偏差率</metric>
+    <metric id="M-012">进入最终时间轴的关键动态事实 Verification Gate 覆盖率</metric>
+    <metric id="M-013">完整时间轴在用户确认前发现并消除硬时间冲突的比例</metric>
+    <metric id="M-014">餐厅 Primary 失效时同区域 Backup 可用覆盖率</metric>
+    <metric id="M-015">Agent 推荐被错误记录为用户确认/已预订状态的事件数（目标为零）</metric>
+    <metric id="M-016">住宿推荐跳转前 AccommodationOfferVerificationReport 覆盖率</metric>
+    <metric id="M-017">住宿无可用方案时按既定回退顺序完成局部重算的成功率</metric>
+    <metric id="M-018">行程中 REQUIRED 预约/票务事项被任务中心正确提取与去重的覆盖率</metric>
+    <metric id="M-019">支付、预约、出票或候补状态被错误合并为“已完成”的事件数（目标为零）</metric>
+    <metric id="M-020">部分成员未完成却被错误显示为全团 READY 的事件数（目标为零）</metric>
+    <metric id="M-021">出境行程中 Traveler × BorderJourneyLeg 强制证件要求的规则覆盖率</metric>
+    <metric id="M-022">非必要证件问题触发率及证件原件/照片/完整号码误收事件数（目标为零）</metric>
+    <metric id="M-023">Readiness Gate 对阻塞项、负责人、截止时间与 recheckAt 的可追溯覆盖率</metric>
+    <metric id="M-024">未打卡用户仍能完整查看和使用当日行程信息的成功率</metric>
+    <metric id="M-025">时间、位置或页面行为被错误推断为到达/完成的事件数（目标为零）</metric>
+    <metric id="M-026">主动监控订阅具备明确同意、对象范围与自动失效时间的覆盖率</metric>
+    <metric id="M-027">动态变化未影响执行却产生主动提醒的误报率</metric>
+    <metric id="M-028">同一动态事件的重复提醒率及提醒严重度误判率</metric>
+    <metric id="M-029">监控提醒错误联动支付、预约、出票、证件、Readiness 或完成状态的事件数（目标为零）</metric>
+    <metric id="M-030">FR-603 小缺口/大缺口判定与实际次日已确认锚点影响的一致率</metric>
+    <metric id="M-031">每个重排候选同时完整展示变更项目与可量化代价的覆盖率</metric>
+    <metric id="M-032">候选确认后新时间轴版本、当前时间轴与 DecisionLog 原子写回的一致率</metric>
+    <metric id="M-033">STALE/SUPERSEDED 候选被错误写回的事件数（目标为零）</metric>
+    <metric id="M-034">删减已确认预约/票务时对应 PreparationTask 外部处理提醒覆盖率，以及自动取消外部预约事件数（后者目标为零）</metric>
+  </successMetrics>
+  <releasePlan status="proposed">
+    <release id="R0" name="需求验证原型">
+      <scope>基于对话完成基础信息、偏好预算、目的地筛选、公开网络攻略研究、交通比较、Day Skeleton、Stay Segment、具体住宿候选、每日路线精排、具体餐饮建议、Verification Gate、完整时间轴，以及预约/票务/证件任务中心；所有不可逆预订、支付、签证/入境申请继续跳转第三方由用户完成。</scope>
+      <execution>只生成任务、截止时间和 recheckAt；不持续后台监控。完全禁止上传证件原件/照片/完整号码，不生成衣物、随身/托运行李等通用行李清单。</execution>
+    </release>
+    <release id="R1" name="可用 MVP">
+      <scope>接入地图、交通、天气及部分携程/飞猪/美团/抖音/餐饮/官方数据能力，生成可验证的住宿 Offer、DailyRoutePlan、MealPlan、FinalTimeline 和 PreparationTask；在用户授权、频率和费用边界确认后，增加放票、库存、候补、审批窗口和规则变化的主动监控与提醒。</scope>
+    </release>
+    <release id="R2" name="旅行中 Agent">
+      <scope>提供无需强制打卡的当日行程助手；在用户按次旅行主动开启后，对已确认交通、住宿、具体预约、当日 Core 和下一 FIXED 节点进行高影响动态验证，按 CRITICAL/ACTION_REQUIRED/INFO 分级并去重提醒。默认不持续定位，Agent 只告知事实、影响与选择；局部重排只在用户请求后生成，以是否可能波及次日已确认锚点区分当天单候选与当天+次日二至三个联动候选，展示变化及代价，并在用户整体确认仍有效的候选后完成版本化写回。外部预约、票务、改签和取消始终由用户办理。</scope>
+    </release>
+    <release id="R3" name="多人协作与长期记忆">
+      <scope>同行成员邀请、投票、共同时间、费用分摊、复盘和授权记忆。</scope>
+    </release>
+  </releasePlan>
+  <acceptanceCriteria status="proposed">
+    <criterion id="AC-001">Agent 严格按照出发地点、目的地区范围、出游人员、出游时间的顺序完成首次基础采集。</criterion>
+    <criterion id="AC-002">用户提供的信息能够被结构化保存，并在后续阶段不被重复询问。</criterion>
+    <criterion id="AC-003">多人异地、老人、儿童、时间不一致和无明确目的地均有对应分支。</criterion>
+    <criterion id="AC-004">候选目的地先通过硬约束过滤，再提供三至五个可解释的差异化方案。</criterion>
+    <criterion id="AC-005">攻略输出能够区分事实和主观评价，标记来源、时效、可信度与争议。</criterion>
+    <criterion id="AC-006">往返交通按门到门总耗时和总费用比较，而不是只比较票价和运行时间。</criterion>
+    <criterion id="AC-007">住宿区域和夜数基于景点粗聚类、半日级 Day Skeleton、餐饮区域、抵达/离开方向、换住宿成本和成员情况联合生成，并解释为什么住一晚、两晚或更多。</criterion>
+    <criterion id="AC-008">数据不足或来源不可用时明确提示，不产生虚构事实。</criterion>
+    <criterion id="AC-009">系统能为每个旅行日生成 Morning/Lunch/Afternoon/Dinner/Evening/Stay 的半日级 Day Skeleton，并允许固定餐厅或活动作为不可随意移动的时间锚点。</criterion>
+    <criterion id="AC-010">住宿夜数默认由连续 Day Skeleton 与空间连续性推导，不要求用户预先决定每个区域住几晚。</criterion>
+    <criterion id="AC-011">具体住宿可以从携程、美团、飞猪、抖音等渠道形成可比较 Offer，并区分同住宿、同房型、不同 RatePlan/套餐。</criterion>
+    <criterion id="AC-012">多人/家庭住宿必须同时满足酒店入住政策、真实床位、家庭/照护关系和用户硬性分房条件。</criterion>
+    <criterion id="AC-013">抖音等团购套餐必须代入用户日期计算加价、有效期、不可用日期和二次预约风险，不能直接以营销展示价与 OTA 实时房价比较。</criterion>
+    <criterion id="AC-014">具体酒店确定前后均可对 Day Skeleton 做局部校验；只有明显空间不合理时才影响住宿推荐，不因几分钟差异过度优化。</criterion>
+    <criterion id="AC-015">每日路线精排先计算旅行日类型和真实可用时间容量，能够识别 DAY_OVERLOADED，并按 Fixed/Must/Preferred/Optional/Backup 优先级解释删减建议。</criterion>
+    <criterion id="AC-016">具体餐饮能够在 Meal Slot 时间窗内从多来源搜索并匹配到门店级实体，验证营业/预约/排队/用餐时长，提供同区域 Primary 与 Backup。</criterion>
+    <criterion id="AC-017">目的型餐厅、已预约餐厅或实际用餐时长改变当天可执行性时，只局部回写受影响 DailyRoutePlan，不无理由重排其他日期。</criterion>
+    <criterion id="AC-018">完整时间轴区分 FIXED、RECOMMENDED、FLEXIBLE、OPTIONAL、BACKUP，并且用户能够识别哪些是外部事实、哪些是估计、哪些只是 Agent 建议。</criterion>
+    <criterion id="AC-019">会锁定执行时间的营业、最晚入场、交通班次、预约、餐厅营业和住宿等动态事实在进入最终时间轴前必须通过 Verification Gate；无法验证时显式标记。</criterion>
+    <criterion id="AC-020">Agent 只提供检索、验证、比较和规划建议；用户保留最终选择、确认、购买、预约与支付决定，系统不得把推荐自动记录为用户确认或已预订。</criterion>
+    <criterion id="AC-021">完整时间轴必须包含规划级移动、等待/排队、休息和非零缓冲，并在冲突存在时阻止静默输出看似可执行的时间表。</criterion>
+    <criterion id="AC-022">住宿推荐及平台跳转前必须生成 AccommodationOfferVerificationReport，核对连续库存、人数/房间、房型床型、完整费用、取消时限和套餐兑现条件。</criterion>
+    <criterion id="AC-023">目标住宿区域无合法房型、只有部分夜晚有房或导致日程明显失衡时，系统按同区域替代 → 相邻区域 → 调整 Stay Segment → 请求用户放宽的顺序回退，不静默放宽硬约束。</criterion>
+    <criterion id="AC-024">Stay Segment 的 checkInDate、checkOutDate、overnightDates 与 numberOfNights 可以互相校验，并正确处理凌晨到达、提前一晚和换住宿日。</criterion>
+    <criterion id="AC-025">系统能从交通、住宿、DailyRoutePlan、MealPlan 和 FinalTimeline 提取并去重 REQUIRED 预约、票务、二次预约、取票和证件任务。</criterion>
+    <criterion id="AC-026">团购券已付款但二次预约未确认时显示“已支付、预约未确认、未就绪”，且不得创建 FixedEvent。</criterion>
+    <criterion id="AC-027">用户只打开外部平台、查看库存或接受 Agent 推荐时，支付、预约、出票、申请和签发状态均不得自动变化。</criterion>
+    <criterion id="AC-028">固定时段预约确认后只按实际参与人范围写回 FixedEvent；开放日期票、候补、临时占位或部分成员成功不得形成全团确定时间锚点。</criterion>
+    <criterion id="AC-029">取消申请尚未获得平台确认时保留原时间锚点；确认取消或改签后保留历史并只重算受影响日期。</criterion>
+    <criterion id="AC-030">尚未放票、规则未公布或申报窗口未开放时生成 NOT_RELEASED/NOT_YET_ACTIONABLE 与 recheckAt；R0 不声称正在后台持续监控。</criterion>
+    <criterion id="AC-031">证件要求按 Traveler × TravelDocument × BorderJourneyLeg 判断；不同成员、不同中转、自助转机或返回居留地要求不能复用一个团体结论。</criterion>
+    <criterion id="AC-032">证件问题只在目的地、中转、自驾、实名或承运规则确有必要时逐项询问；用户可跳过，跳过后保持 UNKNOWN。</criterion>
+    <criterion id="AC-033">R0 完全禁止上传或保存证件原件、照片、完整号码、MRZ 与生物识别图像，同时允许用户完成规则判断所需的最小结构化事实。</criterion>
+    <criterion id="AC-034">签证已提交、已批准、已签发、已取得和是否覆盖目标行程段分别保存；任何前置状态不得自动升级为后续状态或构成入境保证。</criterion>
+    <criterion id="AC-035">全团 READY 仅在所有成员、所有 P0 行程段的强制预约/票务/证件要求均满足时成立，且报告能定位具体成员、行程段、待办、负责人和截止时间。</criterion>
+    <criterion id="AC-036">R0 不生成衣物、天气穿搭、随身/托运行李分配、包袋重量尺寸、洗衣、共享物品或通用购物清单。</criterion>
+    <criterion id="AC-037">用户无需对任何行程项打卡即可查看完整当日行程；没有回填时 executionStatus 保持 UNKNOWN。</criterion>
+    <criterion id="AC-038">时间经过、位置接近、打开页面、点击地图/外部链接或收到提醒均不得自动标记到达、完成、支付、预约或出票。</criterion>
+    <criterion id="AC-039">用户请求重新判断但上下文不足时，Agent 一次只询问一个会改变判断的最小问题。</criterion>
+    <criterion id="AC-040">用户拒绝位置权限后仍可手动提供当前位置；一次性位置不得转化为持续追踪或完整轨迹。</criterion>
+    <criterion id="AC-041">用户报告延迟、跳过或需要调整时，系统先告知影响；只有用户选择查看调整方案后才进入 FR-603。</criterion>
+    <criterion id="AC-042">未获得用户对单次旅行、对象范围、有效时间和提醒方式的明确同意时，不得创建旅行中监控订阅；旅行结束后订阅自动失效。</criterion>
+    <criterion id="AC-043">旅行中主动监控只覆盖已确认交通、住宿、具体预约、当日 Core 和下一 FIXED 节点，普通价格、热门程度、Flexible 与 Optional 默认不监控。</criterion>
+    <criterion id="AC-044">客观运营变化优先由直接官方、承运人、订单或预约来源核验；地图只用于 ETA/拥堵估计，UGC 不得单独证明取消、关闭或营业变化。</criterion>
+    <criterion id="AC-045">不影响执行的普通天气、拥堵、排队或营业变化只更新当日页面，不生成主动行动提醒。</criterion>
+    <criterion id="AC-046">CRITICAL、ACTION_REQUIRED 与 INFO 的提醒级别必须与验证状态和执行影响一致；ESTIMATED、UNVERIFIED、CONFLICTED、STALE 不得表现为确定事实。</criterion>
+    <criterion id="AC-047">相同动态事件必须去重，只有严重度升级、影响范围实质变化或临近决策截止时间时才允许再次提醒。</criterion>
+    <criterion id="AC-048">提醒只提供保持原计划、查看调整方案或稍后决定等选择；提醒送达、打开或查看方案不得改变任何交易、证件、Readiness、执行完成或用户决策状态。</criterion>
+    <criterion id="AC-049">只有用户明确选择 VIEW_REPLAN 才创建重排请求；原方案基线、触发变化、当前执行上下文与计算时间均可追溯，查看候选不修改正式时间轴。</criterion>
+    <criterion id="AC-050">明确不影响次日已确认交通、FIXED 事件或 Must 预约时判定为 SMALL 并只调整当天；存在波及可能时判定为 LARGE，并直接生成当天与次日联动候选。</criterion>
+    <criterion id="AC-051">SMALL 默认只输出一个最小改动候选；LARGE 输出二至三个在锚点保护、体验保留、缓冲/强度或成本上有实质差异的有效候选。若硬约束下只有一个有效解，系统明确说明原因且不生成无效陪衬方案。</criterion>
+    <criterion id="AC-052">每个候选均相对同一原方案展示新增、删除、跳过、改时、换序、移动方式和受影响日期，并明确标注少去项目、剩余缓冲、强度变化、额外费用或外部任务等代价。</criterion>
+    <criterion id="AC-053">用户只能整体确认或拒绝当天+次日联动候选；确认 ACTIVE 候选后，新建 FinalTimelineVersion、更新当前时间轴/currentTimelineVersionId 并写入包含时间、理由和被替代方案的 DecisionLog，三者不得部分成功。</criterion>
+    <criterion id="AC-054">候选删除或跳过已关联的已确认预约/票务项目时，比较与写回均提示用户处理对应 PreparationTask，例如外部取消、改签或退款；系统不自动执行任何外部取消或交易。</criterion>
+    <criterion id="AC-055">候选超出 validUntil 或关键依赖变化后自动变为 STALE 并禁止写回；用户再次请求查看调整时始终重新计算，并将上一批候选标记为 SUPERSEDED。</criterion>
+  </acceptanceCriteria>
+  <openQuestions>
+    <question id="OQ-001" priority="P0">首版优先支持国内旅行、出境旅行，还是两者同时支持？</question>
+    <question id="OQ-002" priority="P0">首版是否只做规划和跳转，还是需要实际查询可售价格与库存？</question>
+    <question id="OQ-003" priority="P0">小红书、抖音和 B 站的数据访问方式采用公开搜索、用户授权浏览器、第三方服务还是其他合规方案？</question>
+    <question id="OQ-004" priority="P0">首版交付形态是 ChatGPT/Codex Skill、独立 Agent、网站内 Agent，还是用于演示的本地原型？</question>
+    <question id="OQ-005" priority="P1">是否需要同行成员独立填写时间和偏好并进行投票？</question>
+    <question id="OQ-006" priority="P1">是否需要账户体系、长期记忆和多次旅行管理？</question>
+    <question id="OQ-007" priority="P1">动态监控的更新频率、通知渠道和费用上限是什么？</question>
+    <question id="OQ-008" priority="P1">首批目标国家、城市和语言范围是什么？</question>
+    <question id="OQ-009" priority="P0">携程、飞猪、美团、抖音的酒店、餐饮、团购套餐和日期价格在首版分别通过公开搜索、用户授权浏览器、第三方服务、合作接口还是其他合规方式获取？</question>
+    <question id="OQ-010" priority="P1">首版是否需要读取用户登录后的会员价、优惠券和个性化价格，还是只比较公开可验证价格？</question>
+    <question id="OQ-011" priority="P0">首批支持哪些出发地、目的地、中转地与证件规则法域，以限定官方规则覆盖和人工核验边界？</question>
+    <question id="OQ-012" priority="P1">多人出境旅行中，成年同行者是否需要私密自填最小证件事实，并只向组织者展示 Readiness 状态？</question>
+  </openQuestions>
+  <nextBacklog>
+    <item id="NEXT-003" order="0" status="confirmed" completionState="completed">完成预约、票务、证件与出发前任务中心拆分；通用行李规划已明确排除。</item>
+    <item id="NEXT-004" order="1" status="confirmed" completionState="completed" confirmedThrough="FR-603">已确认 FR-601 当日行程助手、FR-602 动态验证/有限监控，以及 FR-603 基于次日锚点影响的缺口分级、动态候选、变更代价对比、时效失效与版本化写回。</item>
+    <item id="NEXT-005" order="2" status="open" completionState="not_started">确定携程、飞猪、美团、抖音、地图、餐饮、UGC、移民/海关/承运人与其他官方数据访问方案及 Verification 数据契约。</item>
+    <item id="NEXT-006" order="3" status="planned">确定首版范围并选择 Agent、Skill、插件或组合架构。</item>
+    <item id="NEXT-007" order="4" status="planned">形成技术设计、工具清单、数据契约和 MVP 验收用例。</item>
+  </nextBacklog>
+  <changeLog>
+    <change version="0.6.0" date="2026-08-20">
+      <summary>确认 FR-603 局部动态重排、候选对比、时效失效与版本化写回。</summary>
+      <details>将是否可能波及次日已确认交通、FIXED 事件或 Must 预约作为缺口分界：SMALL 只调整当天并默认生成一个最小改动候选；LARGE 直接生成覆盖当天与次日的二至三个有效联动候选，在锚点保护、体验保留、缓冲/强度或成本上形成实质差异。每个候选相对同一原方案展示变化和可量化代价；用户整体确认 ACTIVE 候选后，新建 FinalTimelineVersion、更新当前时间轴并写入包含时间、理由与被替代方案的 DecisionLog。删减已确认预约/票务时同步提醒处理 PreparationTask，但不自动取消外部预约。候选超时或依赖变化自动 STALE；用户再次请求查看调整时强制重新计算并使旧批次 SUPERSEDED。同步更新旅行中阶段、状态模型、NFR、指标、R2 范围、验收标准与后续工作项。</details>
+    </change>
+    <change version="0.5.0" date="2026-08-20">
+      <summary>确认非强制打卡的当日行程助手与按次旅行开启的有限动态监控。</summary>
+      <details>扩写并确认 FR-601 与 FR-602：用户无需打卡即可查看当日行程，执行状态默认 UNKNOWN，只有用户主动回填才可变化；禁止根据时间、位置、页面访问、链接点击或提醒自动判断到达/完成。位置默认手动提供，一次性授权可选且不保存完整轨迹。旅行中监控仅在用户按次旅行主动开启后生效，限定已确认交通、住宿、具体预约、当日 Core 和下一 FIXED 节点；采用 CRITICAL/ACTION_REQUIRED/INFO 三级提醒、执行影响门槛、来源优先级和事件指纹去重。Agent 只告知事实、风险、影响与可选方案，用户决定是否进入 FR-603；同步补充执行状态、监控订阅、动态观察、提醒记录、NFR、指标、发布边界与验收标准。</details>
+    </change>
+    <change version="0.4.1" date="2026-08-20">
+      <summary>删除独立的安全应急功能模块。</summary>
+      <details>删除原“安全、医院、药店、使领馆和紧急联系人”功能节点，并同步从旅行中生命周期、端到端流程、NEXT-004 后续范围及 R2 发布范围中移除独立安全应急能力。安全仍作为行程可行性、动态事实核验和建议质量的基础约束，不再建设为单独的产品功能模块。</details>
+    </change>
+    <change version="0.4.0" date="2026-08-20">
+      <summary>确认跨阶段预约/票务/证件任务中心，补齐住宿验证与回退闭环，并收紧 R0 范围。</summary>
+      <details>将 STAGE-5 完成状态统一为 confirmed，FR-505 重构为贯穿规划过程的 PreparationTask 中心；新增预约行动模式、多轴支付/预约/出票状态、多人覆盖、外部结果回填、FixedEvent 局部回写、未放票 recheckAt 和三道 Readiness Gate。证件模块采用 Traveler × TravelDocument × BorderJourneyLeg 判断单元，只在必要时逐项询问最小结构化事实，完全禁止上传或保存证件原件、照片、完整号码与 MRZ。R0 只生成待办和 recheckAt，不持续后台监控；不建设衣物、随身/托运行李等通用行李产品线。住宿模块新增 AccommodationOfferVerificationReport、连续库存与完整费用核验、无解回退顺序、预订状态、日期语义和可解释空间净收益判断；同步修正“已支付/已购买不等于具体时段 FIXED”的状态规则。</details>
+    </change>
+    <change version="0.3.0" date="2026-08-20">
+      <summary>确认每日路线、具体餐饮与完整时间轴；新增 Agent 建议边界和全局 Verification Gate。</summary>
+      <details>将 STAGE-5 后半段调整为 FR-502 每日景点路线与顺序精排 → FR-503 具体餐厅与餐饮安排 → FR-504 完整时间轴 → FR-505 准备事项；新增旅行日类型、DailyTimeBudget、超载检测、Core/Flexible/Backup、门店级餐厅匹配、MealPlan、目的型/路线服务型餐厅、排队/预约核验、最终 Verification Gate、TimelineVerificationReport 与 FIXED/RECOMMENDED/FLEXIBLE/OPTIONAL/BACKUP 时间轴分类。确认 Agent 只提供检索、验证、比较与建议，用户保留最终选择和不可逆交易决定；所有关键动态事实必须区分 VERIFIED/CORROBORATED/ESTIMATED/UNVERIFIED/CONFLICTED/STALE。</details>
+    </change>
+    <change version="0.2.0" date="2026-08-20">
+      <summary>重构住宿与行程关系，新增 Day Skeleton、Stay Segment 与多平台住宿决策模型。</summary>
+      <details>确认住宿夜数由半日级行程骨架和空间连续性推导；餐饮区域前置进入 Day Skeleton；新增 FR-308 多平台数据支撑、FR-409 行程骨架/住宿夜数联合规划；重构 FR-501 为携程/美团/飞猪/抖音多平台住宿搜索、实体/房型/套餐匹配、家庭多人房型组合、真实成本与套餐价值、日程空间适配及预订风险；补充状态模型、Agent Skills、验收标准和后续数据接入问题。</details>
+    </change>
+    <change version="0.1.0" date="2026-08-20">
+      <summary>首次整理为可跨对话复用的 XML PRD。</summary>
+      <details>确认基础信息采集、旅行目标与目的地筛选、多平台攻略研究、交通及住宿区域四个阶段；增加产品定位、决策模型、证据治理、初步 Agent 架构、状态模型、后续范围和续写指令。</details>
+    </change>
+  </changeLog>
+</productRequirementsDocument>

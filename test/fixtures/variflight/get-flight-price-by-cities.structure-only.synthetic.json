@@ -1,0 +1,52 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "arraptccity": "arrival-airport-city-token",
+      "arraptcname": "arrival-airport-name-token",
+      "arrcitycode": "BBB",
+      "arrdate": "arrival-date-token",
+      "cabins": [
+        {
+          "cabinclass": "cabin-class-token",
+          "cabincode": "cabin-code-token",
+          "classname": "class-name-token",
+          "discount": 0.5,
+          "price": 123.45,
+          "seatnum": 7,
+          "stprice": 246.9
+        }
+      ],
+      "depaptccity": "departure-airport-city-token",
+      "depaptcname": "departure-airport-name-token",
+      "depcitycode": "AAA",
+      "depdate": "departure-date-token",
+      "distance": 999.5,
+      "flightarrcode": "ARR",
+      "flightarrtimeplandate": 2222222222,
+      "flightcompany": "flight-company-token",
+      "flightdepcode": "DPT",
+      "flightdeptimeplandate": 1111111111,
+      "flighthterminal": "arrival-terminal-token",
+      "flightno": "SYNTHETIC-FLIGHT",
+      "flightterminal": "departure-terminal-token",
+      "food": "food-token",
+      "generic": "generic-token",
+      "oilfee": "oil-fee-token",
+      "shareflag": 1,
+      "shareflightno": "synthetic-shared-flight",
+      "stopairportcode": "STP",
+      "stopairportname": "stop-airport-name-token",
+      "stopcity": "CCC",
+      "stopcityname": "stop-city-name-token",
+      "stopflag": 1,
+      "tax": "tax-token"
+    },
+    {
+      "cabins": []
+    }
+  ],
+  "message": "synthetic-local-fixture",
+  "request_id": "synthetic-request-id",
+  "timestamp": "synthetic-provider-timestamp"
+}

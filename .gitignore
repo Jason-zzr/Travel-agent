@@ -1,0 +1,59 @@
+# Dependencies and generated builds
+node_modules/
+/dist/
+/out/
+*.tsbuildinfo
+coverage/
+
+# OS, editor and local logs
+.DS_Store
+Thumbs.db
+Desktop.ini
+.eslintcache
+*.log*
+*.tmp
+*.bak
+/.vscode/
+
+# Local assistant integrations, scratch files and session material
+/.agents/
+/.claude/
+/.codex/
+/.pi/
+/.finesse/
+/.tmp/
+/.tokenless-run/
+/.workbench/
+/.trellis/tasks/
+/.trellis/workspace/
+
+# Generated acceptance results and personal research inputs
+/test/artifacts/
+/plans/*.json
+/plans/*-manual-research-input.md
+
+# Local credentials and application data (keep example configuration)
+.env
+.env.*
+!.env.example
+!.env.*.example
+credentials.json
+provider-config.json
+source-config.json
+cookies.json
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+*.consumed
+*.pem
+*.key
+
+# Python MCP servers
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.py[cod]

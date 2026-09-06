@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ROADMAP.xml — 长期路线放行
+  职责：分层放行顺序、发布计划、砍量顺序与绝不可砍清单。
+  纪律：本文件不复述 PRD 内容，只引用 PRD 节点 ID。
+        COLLABORATION.md §5 已确立"重复一份必然会漂移"，故此处只做索引与状态收口。
+-->
+<roadmap id="travel-harness-roadmap" version="1.0.25" language="zh-CN" lastUpdatedDate="2026-09-05">
+
+  <ownership>
+    <responsibility>长期路线放行：分层、发布、砍量顺序、绝不可砍边界。</responsibility>
+    <notResponsibleFor ref="PROGRESS.xml">当前状态、完成声明、阻塞与交接证据。</notResponsibleFor>
+    <notResponsibleFor ref="CHANGELOG.xml">版本沉淀与历史变更。</notResponsibleFor>
+    <notResponsibleFor ref="TODO.md">下一轮可执行清单与验收步骤。</notResponsibleFor>
+  </ownership>
+
+  <authority>
+    <sourceOfTruth path="intelligent-travel-agent-prd-v1.1.xml" version="1.1.59">
+      需求与实施分层的唯一权威源。本文件与其冲突时以 PRD 为准。
+    </sourceOfTruth>
+    <sourceOfTruth path="intelligent-travel-agent-prd-v0.7.xml">
+      需求语义的权威档案。凡 PRD v1.1 标注 seeV07 的契约，以 v0.7 同 ID 节点为准。
+    </sourceOfTruth>
+    <sourceOfTruth path=".trellis/tasks/">
+      任务生命周期状态的唯一权威源。PRD 的 completionState 是叙述性的，
+      与 task.json 的 status 冲突时以 task.json 为准。
+    </sourceOfTruth>
+  </authority>
+
+  <!-- ============ 实施分层 ============ -->
+  <tiers ref="PRD:implementationTiers">
+    <tier code="M0" name="七日单场景 MVP" status="in_progress">
+      <scope>端到端跑通 M0-ENVELOPE 内的一次真实旅行规划；另含已确认的 M0-YUNNAN-MULTI-CITY 10 天本地试点扩展。</scope>
+    </tier>
+    <tier code="M1" name="包络扩展与治理补齐" status="planned">
+      <scope>解除场景限制、成本硬上限、高影响复核、旅行日助手、局部重排、离线与可访问性。</scope>
+    </tier>
+    <tier code="M2" name="需重新立项" status="planned">
+      <scope>跨平台比价匹配、专用浏览器登录态、旅行中持续监控、境外旅行、移动端与云同步。</scope>
+      <constraint>每项均需独立的安全与合规评审。</constraint>
+    </tier>
+    <tierRule ref="PRD:implementationTiers/tierRule" enforcement="hard">
+      M0 允许为 M1/M2 预留枚举值、数据库列与接口签名，但禁止编写其实现分支。
+      预留必须是"字段存在但恒为默认值"，不能是"半实现"。
+    </tierRule>
+  </tiers>
+
+  <!-- ============ 发布计划 ============ -->
+  <releases ref="PRD:releasePlan">
+    <release id="R0" name="M0 七日单场景 MVP" tier="M0" status="confirmed">
+      <scope>M0-ENVELOPE 内的端到端旅行前规划，含 STAGE-1 至 STAGE-5、既有四个 MCP 数据源、GATE_C 与导出；广州→云南 10 天试点另含航班参考的受控扩展。route core、node D4、multi-segment D5、unified D6/D7 与人工交通恢复已完成；selected-route 节点默认由 Travel Agent 经 bundled XHS MCP 获取并验证路线体验事实，硬事实另需独立 allowlisted 来源，人工研究只作显式降级。VariFlight R-1/R-2/R-3 仅保留为旧 SSE 历史诊断且语义未证明。FlyAI Phase A、Gate v4 LIVE_STRUCTURE_ONLY 与 Phase C LOCAL strict result contract 已完成；合同仅允许已观测键/类型和 *Raw 字段，未证明语义固定 null。生产 SRC_FLIGHT、Evidence/Claim/RouteLeg、真实旅行与值级 LIVE 验收仍待。</scope>
+      <exitCriteria>BUILD-D7 的完成判据全部达成，且用户完成一次真实使用。</exitCriteria>
+    </release>
+    <release id="R1" name="包络扩展与治理补齐" tier="M1" status="planned">
+      <scope>通用多目的地、异地会合、自驾与任意多 Stay Segment；成本硬上限；第二模型复核；GATE_A 与 GATE_B；旅行日助手；离线模式；WCAG AA；Knowledge Pack；PDF 导出。已确认的云南试点不代表通用能力放行。</scope>
+    </release>
+    <release id="R2" name="需重新立项" tier="M2" status="planned">
+      <scope>跨平台比价匹配、专用浏览器工作区、旅行中持续监控、境外旅行、旅行后复盘与长期记忆。</scope>
+    </release>
+  </releases>
+
+  <!-- ============ 七日构建序列 ============ -->
+  <buildSequence ref="PRD:sevenDayBuildPlan">
+    <note>逐日状态见 PROGRESS.xml。此处只记序列与依赖关系。</note>
+    <serialCriticalPath ref="PRD:BUILD-PARALLEL/criticalPath">
+      <item day="BUILD-D0">环境前置与实名认证。高德未实名全部配额为零。</item>
+      <item day="BUILD-D1">八个内核服务与 Cordis 装配；第一条 MCP 通道。首条成本是后续的三至五倍。</item>
+      <item day="BUILD-D7">打包与干净环境验证。</item>
+    </serialCriticalPath>
+    <parallelLanes ref="COLLABORATION.md#1">
+      <lane id="LANE-SCHEMA" dir="src/shared/schema/"/>
+      <lane id="LANE-SKILL" dir="src/main/skills/"/>
+      <lane id="LANE-VIEW" dir="src/renderer/src/views/"/>
+      <lane id="LANE-AC" dir="验收清单与测试脚本"/>
+      <lane id="LANE-RESEARCH" dir="只读，产出文档"/>
+      <rule enforcement="hard">一个 lane 只改一个目录。跨目录改动回主线由本人做。</rule>
+      <rule enforcement="hard">并行省下的时间回补 D1 风险，不用来扩大 M0 范围。</rule>
+    </parallelLanes>
+    <day id="BUILD-D0" name="环境前置（挂机）"/>
+    <day id="BUILD-D1" name="内核与外壳"/>
+    <day id="BUILD-D2" name="对话与状态机"/>
+    <day id="BUILD-D3" name="MCP 工具层"/>
+    <day id="BUILD-D4" name="研究与目的地情报"/>
+    <day id="BUILD-D5" name="交通、骨架与住宿"/>
+    <day id="BUILD-D6" name="精排、餐饮与时间轴" status="implemented_local"/>
+    <day id="BUILD-D7" name="任务中心与收口" status="implemented_local">
+      LOCAL 任务/GATE/导出/Inspector、云南 unified D6/D7、route-core 人工交通证据恢复与 x64 NSIS artifact 已完成；D7 package verifier 已精确纳入 FlyAI launcher 与两份 unpacked integrity，当前全量为 303/303 且 migration 仍只到 0010，真实 session、真实旅行、安装/卸载和日历导入仍待验。
+    </day>
+  </buildSequence>
+
+  <!-- ============ 砍量顺序 ============ -->
+  <descopeOrder ref="PRD:BUILD-CUT" status="confirmed">
+    <purpose>落后时按顺序整条砍掉，不要把每天的工作量平摊延期。前面的先砍。</purpose>
+    <cut order="1" ref="FR-504">砍具体餐厅选定，只保留 FR-408 的餐饮区域锚点。</cut>
+    <cut order="2" ref="UX-001">砍 PLAN_EVIDENCE_COMPARE 并排比较视图，证据仍可在 EVIDENCE 视图查看。</cut>
+    <cut order="3" ref="FR-402">砍备选方案，只输出一份综合最优。</cut>
+    <cut order="4" ref="FR-509">砍 ICS 导出，只保留 Markdown。</cut>
+    <cut order="5" ref="HK-001">砍事件重放的 UI 可视化，只保留事件写入与快照恢复能力。事件日志本身绝不能砍。</cut>
+  </descopeOrder>
+
+  <neverCut ref="PRD:BUILD-CUT/neverCut" enforcement="hard">
+    <note>以下五项不在任何砍量情形下让步。出错代价不对称，按 COLLABORATION.md §7 由本人实现与复核，不分派。</note>
+    <item ref="NFR-019">不可逆动作禁令与只读工具白名单。</item>
+    <item ref="EC-001">EvidenceClaim 与来源可追溯。</item>
+    <item ref="HK-001">append-only 事件日志与状态恢复。</item>
+    <item ref="NFR-017">凭据加密存储。</item>
+    <item ref="M0-ENVELOPE">包络校验与超包络显式拒绝。</item>
+  </neverCut>
+
+  <!-- ============ 长期待办 ============ -->
+  <backlog ref="PRD:nextBacklog">
+    <item id="NEXT-011" priority="P1" status="open">
+      把四个 MCP 源的真实返回样例结构回写到 PRD 的 mcpDataLayer，供后续会话直接使用而无需重新探测。
+    </item>
+    <item id="NEXT-012" priority="P1" status="open">
+      每天收工时更新对应 day 的 completionState 与 changeLog，保证跨会话可续。
+    </item>
+    <item id="NEXT-013" priority="P2" status="open">
+      M0 交付后，基于真实使用中的卡壳点重排 M1 优先级，而不是照搬 v0.7 的原有顺序。
+    </item>
+    <item id="NEXT-017" priority="P0" status="open">
+      BUILD-D7 LOCAL、bundled XHS、D4 人工降级、route-core 人工交通、FlyAI Phase C LOCAL 与独立 package verifier 修复均已完成。selected-route required node 默认由 Travel Agent 通过 XHS_STRICT 获取与验证，用户逐计划授权并选择；开放/闭园/预约另需独立标准/官方来源，人工入口仅在失败或不足后显式降级。当前 route 已选择并停在 STAGE_3；R0 退出前仍需完成新 node-scoped Gate、后续 D4-D7 与用户安装/Outlook 验收。
+    </item>
+    <item id="NEXT-018" priority="P0" status="implemented_local">
+      RollingGo Flight 已下线维护；VariFlight Gate R-1/R-2/R-3 已消费且只作不可迁移的历史证据。FlyAI Phase A LOCAL、一次 Gate v4 LIVE_STRUCTURE_ONLY 探针及 Phase C LOCAL strict result contract 已完成并归档；成员字段 optional、漂移 fail closed，normalized 仅保留 *Raw 且未证明语义固定 null。本地展示或更强语义证据须新任务重新定界。生产 SRC_FLIGHT、Evidence/Claim/RouteLeg 与路线/UI 继续关闭，人工航班证据不可删除；任何更多真实执行需要 fresh current-version Gate 与新的 exact approval。
+    </item>
+    <item id="NEXT-010" priority="P0" status="resolved" resolvedDate="2026-08-21">
+      OQ-019 与 OQ-020 已决议，不再构成开工前置条件。
+    </item>
+  </backlog>
+
+  <openQuestions ref="PRD:openQuestions">
+    <question id="OQ-021" priority="P1" status="open">
+      12306-mcp 无 SLA，靠正则匹配 12306 首页 HTML 构建车站索引，会周期性失效
+      （2026 年 6 月与 7 月各发生过一次）。按周期性中断规划，而非稳定依赖。
+    </question>
+    <question id="OQ-023" priority="P2" status="resolved" resolvedDate="2026-08-24">
+      四个模型角色的渠道分派已由 ROUTER-001 version 2 channels + roles 关闭，见 CHANGELOG.xml 1.1.2。
+    </question>
+  </openQuestions>
+
+</roadmap>

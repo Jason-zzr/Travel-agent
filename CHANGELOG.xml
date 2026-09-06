@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CHANGELOG.xml — 阶段性计划沉淀 / 版本历史
+  职责：版本沉淀与历史变更摘要。
+  纪律：本文件是 PRD changeLog 的可导航摘要，不是第二份权威源。
+        每条只记"这一版决定了什么、边界是什么"，细节回 PRD 同版本节点。
+-->
+<changelog id="travel-harness-changelog" language="zh-CN" lastUpdatedDate="2026-09-05">
+
+  <ownership>
+    <responsibility>版本沉淀与历史变更摘要，按版本倒序。</responsibility>
+    <notResponsibleFor ref="PROGRESS.xml">当前状态与阻塞。</notResponsibleFor>
+    <notResponsibleFor ref="ROADMAP.xml">未来放行顺序。</notResponsibleFor>
+  </ownership>
+
+  <authority>
+    <sourceOfTruth path="intelligent-travel-agent-prd-v1.1.xml" node="changeLog">
+      权威变更记录。本文件是其摘要索引，冲突时以 PRD 为准。
+    </sourceOfTruth>
+    <inheritedVersions path="intelligent-travel-agent-prd-v0.7.xml">
+      0.1.0 至 0.7.0 的完整变更记录见 v0.7 文档，本文件不复述。
+    </inheritedVersions>
+  </authority>
+
+  <!-- 证据等级词表：本项目把"本地通过"与"实源验收"严格分为两级，不可互相冒充 -->
+  <evidenceLevels>
+    <level id="LOCAL">本地夹具、离线门禁与 externalCalls=0 的 smoke 通过。不构成实源验收。</level>
+    <level id="LIVE">经一次性精确授权后，对真实来源固定一次调用且无重试，契约通过。</level>
+    <level id="LIVE_STRUCTURE_ONLY">经一次性精确授权后只完成真实来源的去值结构观测；不证明业务值、字段语义或生产可用性。</level>
+    <rule enforcement="hard">LOCAL 通过不得表述为 LIVE 验收。每次 LIVE 调用需绑定来源、工具、查询、凭据、用途与一次尝试的新授权。</rule>
+  </evidenceLevels>
+
+  <versions>
+
+    <version number="1.1.59" date="2026-09-05" scope="ROUTE-NODE XHS-FIRST REQUIREMENT">
+      <summary>将 selected-route 节点事实的默认获取与验证责任交给 Travel Agent，通过 bundled Xiaohongshu MCP 执行；用户只负责逐计划授权、选择与冲突裁决。</summary>
+      <change type="默认路径">required node 默认使用 XHS_STRICT 零调用 preview 与一次性精确批准；应用负责采集、结构校验、抽取、复核和 node-scoped 投影，Settings 登录不构成研究授权。</change>
+      <change type="事实边界">UGC 可佐证路线体验、拥挤、体力、服务与避雷，但不能独立验证开放时间、闭园或预约；硬事实需另一份独立 allowlisted 标准/官方来源计划，否则保持 UNKNOWN/BLOCKED。</change>
+      <change type="降级边界">USER_RESEARCH / VERIFIED_BY_USER 仅在自动路径失败或不足后由用户显式选择；不得自动 fallback，也不得把既有人工事实改写为 MCP 已验证。</change>
+      <evidence level="LOCAL">工程控制文档、Trellis 任务与 backend/frontend 契约已同步；未改变代码、数据库或已存在 Evidence。</evidence>
+      <remaining>未生成或消费新的 route-node XHS/标准来源 Gate，未调用 search/detail 或模型；当前 session 仍在 STAGE_3，后续节点与硬事实仍需逐份授权验收。</remaining>
+    </version>
+
+    <version number="1.1.58" date="2026-09-05" scope="XHS LOGIN LIFECYCLE AND ELECTRON SMOKE REPAIR">
+      <summary>修复 Settings 在未启动小红书登录时误发取消 IPC 的回归，恢复双渲染模式 Electron smoke，并重建当前源码 Windows 候选包。</summary>
+      <evidence level="LOCAL">316/316、format/lint、双端 typecheck、production build、Electron default/no-gpu smoke、build:win 与 package verifier 通过；两种 smoke 均为 electronSandbox=true、xhsLifecycleCancel=true、rendererConsoleErrors=0、externalCalls=0。</evidence>
+      <change type="生命周期与门禁">只有显式登录才创建 lifecycle identity，终态只发一次 source:cancel；无登录 teardown 零取消。当前 installer 109714739 bytes、SHA-256 a58f2309d2a0f99588ab80d6de0142062fe7f87ba3ee5072e7115f51bcaa189c、NotSigned、未执行。</change>
+      <remaining>真实 XHS binary、首次 Chromium 下载、扫码、内容查询、模型、外部写操作和 installer 均未执行；干净 Windows 登录与无残留进程仍待独立 LIVE/人工验收。</remaining>
+    </version>
+
+    <version number="1.1.57" date="2026-09-04" scope="BUNDLED XHS MCP SIDECAR LOCAL">
+      <summary>固定上游 v2.5.0 小红书 MCP 为 Windows x64 应用内置、按需启动的 Main-owned sidecar，移除 Docker 产品依赖。</summary>
+      <evidence level="LOCAL">316/316、format/lint、双端 typecheck、build:win 与 package verifier 通过；三项固定 XHS resource 的路径、regular-file、containment、版本、大小、SHA-256 与 Apache-2.0 notice 通过。</evidence>
+      <change type="生命周期与安全">显式登录/精确批准研究才启动；固定 loopback、随机 Main-only token、app-owned cookies/cache/work、env allowlist、单例 lease 与确定进程树回收。登录合同支持 QR_REQUIRED / ALREADY_LOGGED_IN；旧 XHS token 不再读取。</change>
+      <remaining>Electron default/no-gpu smoke 因宿主 GPU 0xC0000135/ERR_FAILED 在页面加载前受阻。installer 109714530 bytes、SHA-256 81dbd3b1dc63901538ff069b1b16d54e72b4736428071d811ab52d53ff92e7f1、NotSigned、未执行；真实 Chromium 下载、扫码、查询与模型均未执行。</remaining>
+    </version>
+
+    <version number="1.1.56" date="2026-09-04" scope="SETTINGS XHS QR LOGIN LOCAL">
+      <summary>新增由用户显式启动的 Settings 小红书二维码登录弹层与有界状态检查。</summary>
+      <evidence level="LOCAL">308 项自动测试、format/lint、双端 typecheck 与 production build 通过；Electron smoke 因宿主 GPU 0xC0000135/ERR_FAILED 在页面加载前受阻。</evidence>
+      <change type="安全边界">固定 get_login_qrcode({})，严格验证受限 text+PNG；二维码只驻留 Renderer 内存，5 分钟过期，3 秒串行检查，无隐藏重试。</change>
+      <remaining>未执行真实扫码、内容查询、模型或外部写操作；NEXT-017 节点研究与实源验收继续独立推进。</remaining>
+    </version>
+
+    <version number="1.1.55" date="2026-09-03" scope="D7 PACKAGE VERIFIER FLYAI LAUNCHER REPAIR">
+      <summary>精确修复 D7 package verifier 的 FlyAI launcher 规则漂移，并重新生成当前源码 Windows 候选包。</summary>
+      <evidence level="LOCAL">303/303、format/lint、双端 typecheck、build:win、package/exports verifier、FlyAI path 与 D7 packaged restart smoke 全部通过；当前 installer 104973007 bytes、SHA-256 90559faed71636808a64ffc3e78ba14f40680fefb0e5cac757725a8baffb0350、NotSigned、未执行。</evidence>
+      <change type="安全边界">只允许精确 launcher 资源；两份 FlyAI unpacked 文件验证 ASAR integrity，launcher 纳入凭据形态扫描。externalCalls/modelCalls/irreversibleActions=0。</change>
+      <remaining>NEXT-017 的关键返程腿、路线选择、真实 session、人工安装/卸载与 Outlook 验收仍未完成。</remaining>
+    </version>
+
+    <version number="1.1.54" date="2026-09-03" scope="NEXT-017 LOCAL SAFETY BASELINE AND PACKAGE VERIFIER DRIFT">
+      <summary>FlyAI LOCAL 子任务归档；NEXT-017 AC-02 基线发现旧 package verifier 未允许正式 launcher 资源路径。</summary>
+      <evidence level="LOCAL">D7 export/timeline/secret fixture 通过；verify:d7-package 对 resources/flyai-utility-process-launcher.cjs 报 unexpected path。installer 104847609 bytes、SHA-256 9668fb9c9c7ecc4dd0bec065226f2fa94e338724fd3451fdfa03d8247849d730、NotSigned，未执行且早于最新源码。</evidence>
+      <remaining>按 R-09 另建 verifier repair 任务；修复、current-source build:win/package verify、真实 E2E、安装/卸载与 Outlook 验收均未完成。</remaining>
+    </version>
+
+    <version number="1.1.53" date="2026-09-03" scope="FLYAI PHASE C LOCAL STRICT RESULT CONTRACT">
+      <summary>依据 Gate v4 的去值结构摘要实现 FlyAI 专属 strict raw/normalized LOCAL 合同；未执行新 Gate。</summary>
+      <evidence level="LOCAL">focused 10/10、全量 301/301、format/lint、Node/Web typecheck 与 production build 通过；externalCalls=0、cliProcessAttempts=0、credentialReads=0、productionAllowlistMutations=0。</evidence>
+      <change type="合同">顶层与 item/journey/segment 仅允许已观测键和 primitive type；成员字段 optional，未知键、类型漂移与空对象 fail closed。</change>
+      <change type="语义边界">normalized 只保留 *Raw，时间、时长、金额、币种、中转等推导字段固定 null；测试仅使用合成值。</change>
+      <remaining>未接真实 runner、生产 SRC_FLIGHT、Evidence/Claim/RouteLeg、route 或 UI；后续本地展示或生产接入需重新定界。</remaining>
+    </version>
+
+    <version number="1.1.52" date="2026-09-03" scope="FLYAI GATE V4 LIVE STRUCTURE ONLY">
+      <summary>修复后的 FlyAI Gate v4 经 exact tuple 批准后只执行一次并成功返回去值结构摘要；Gate 已消费。</summary>
+      <evidence level="LIVE_STRUCTURE_ONLY">stage=run、cliProcessAttempts=1、applicationRetryCount=0、internal provider request/retry=UNKNOWN、raw/value retention=false；data.itemList 长度 10、journeys 长度 1、segments 长度 1 或 2，truncated=false。</evidence>
+      <change type="后置状态">Gate 状态 CONSUMED、operation marker 存在、active lock=0、workspace-owned process=0；未重试。</change>
+      <remaining>下一步仅做 Phase C LOCAL strict result contract；不推断航班号、时刻、价格、库存或字段语义，生产 SRC_FLIGHT、Claim、route/UI 继续关闭。任何更多真实执行需要 fresh current-version Gate 与新的 exact approval。</remaining>
+    </version>
+
+    <version number="1.1.51" date="2026-09-03" scope="FLYAI UTILITY PROCESS ARGV LAUNCHER LOCAL">
+      <summary>修复 FlyAI UtilityProcess 下 Commander argv 错位并把未来 Gate 绑定升级到 v4；没有生成 preview、读取凭据或执行真实 FlyAI。</summary>
+      <evidence level="LOCAL">focused 26/26、全量 298/298、format/lint、Node/Web typecheck、production build、build:unpack 与 packaged path-only zero-call smoke 通过；externalCalls=0、cliProcessAttempts=0、credentialReads=0、productionAllowlistMutations=0。</evidence>
+      <change type="根因">Electron UtilityProcess 下 Commander 从 argv[1] 解析，旧 runner 暴露 bundle 路径导致 search-flight 未选中并将 --origin 判为根命令未知选项。</change>
+      <change type="失败事实">修复前的 exact-approved Gate v3 已消费并在 stage=run 返回 MCP_TOOL_ERROR / CLI_USAGE_ERROR；未形成结构或航班事实，内部 provider request/retry 仍为 UNKNOWN，旧 tuple 不可重放。</change>
+      <change type="启动与供应链">新增固定 SHA-256、regular-file/realpath 与 packaged unpacked 路径绑定的 CJS launcher；它把逻辑命令归一到 argv[1] 后再加载固定 FlyAI bundle。</change>
+      <change type="Gate">未来 preview 使用 flyai-flight-gate/v4 并绑定 launcher 文件/路径摘要与 argv 契约；历史 v1/v2/v3 可解析审计但不可执行。</change>
+      <remaining>任何真实复验仍需另行批准 fresh Gate v4 zero-call preview 与新的 exact tuple；生产 SRC_FLIGHT、Claim、route/UI 仍关闭。</remaining>
+    </version>
+
+    <version number="1.1.50" date="2026-09-03" scope="FLYAI FAILURE CLASSIFIER V2 LOCAL">
+      <summary>扩展 FlyAI 无值失败分类并把未来 Gate 绑定升级到 v3；没有生成 preview、读取凭据或执行 FlyAI。</summary>
+      <evidence level="LOCAL">focused 28/28、全量 295/295、format/lint、Node/Web typecheck、production build、build:unpack 与 packaged path-only zero-call smoke 通过；externalCalls=0、cliProcessAttempts=0、credentialReads=0、productionAllowlistMutations=0。</evidence>
+      <change type="错误契约">classifier v2 固定区分 HTTP 401/403/429/451、其余 4xx、5xx、CLI usage、JSON-RPC、network、SSE no-body/invalid response 与 unknown；Body 正文仍被排除并在分类后清空。</change>
+      <change type="事件边界">stderr data 监听延后到 exit 的既有微任务结算点清理，覆盖同一退出边界的尾随诊断，不增加进程或重试。</change>
+      <change type="Gate">未来 preview 使用 flyai-flight-gate/v3 并绑定 classifier v2；历史 Gate v1 与 classifier-v1 Gate v2 可解析审计但不可执行。</change>
+      <remaining>此前 Gate v2 已消费且 UNKNOWN 根因未被重新观测。任何真实复验仍需另行批准 fresh Gate v3 zero-call preview 与新的 exact tuple；生产 SRC_FLIGHT、Claim、route/UI 仍关闭。</remaining>
+    </version>
+
+    <version number="1.1.49" date="2026-09-03" scope="FLYAI DEVICE IDENTITY AND SAFE FAILURE CLASSIFICATION LOCAL">
+      <summary>修复 FlyAI 每次临时 HOME 生成新设备身份及非零退出不可诊断的问题；没有生成或执行新 Gate。</summary>
+      <evidence level="LOCAL">focused 25/25、全量 292/292、format/lint、Node/Web typecheck、production build、build:unpack 与 packaged path-only zero-call smoke 通过；未启动或调用 FlyAI，provider request/retry 仍 UNKNOWN，生产 SRC_FLIGHT 未变。</evidence>
+      <change type="设备身份">在应用专属 userData 中仅持久化非敏感 UUID 种子，每次复制到临时 HOME 的 .flyai/device-id；真实 HOME、FlyAI config 与凭据仍不持久化。</change>
+      <change type="错误契约">最多 8 KiB stderr 仅在内存分类为 HTTP_401/403/429/5XX、JSON_RPC_ERROR、NETWORK_ERROR、INVALID_RESPONSE 或 UNKNOWN；对外只保留枚举并清空原始缓冲。</change>
+      <change type="Gate">新 preview 使用 flyai-flight-gate/v2 并绑定稳定 device-id 与分类器契约；历史 v1 artifact 保留可读但不可执行。</change>
+      <remaining>此前 Gate 已消费且不能重放。任何真实复验仍需 fresh Gate v2 zero-call preview 与新 exact approval；本版本没有航班结构/事实证据。</remaining>
+    </version>
+
+    <version number="1.1.48" date="2026-09-03" scope="FLYAI FAILED GATE LOCAL DIAGNOSIS">
+      <summary>修复已消费失败 Gate 暴露的 Electron 启动参数、Windows sandbox 清理遮蔽与不稳定错误码；本轮未再次启动或调用 FlyAI。</summary>
+      <evidence level="LOCAL">focused 15/15、全量 287/287、format/lint、Node/Web typecheck、production build、build:unpack、开发态与 packaged path-only zero-call smoke 通过；externalCalls=0、cliProcessAttempts=0、credentialReads=0、productionAllowlistMutations=0。</evidence>
+      <change type="启动契约">`probe:flyai:flight` 固定使用 `electron . -- --probe-flyai-flight-once`，显式隔离 Electron 与应用参数。</change>
+      <change type="错误契约">sandbox 删除使用有界本地重试并安全映射 INTERNAL_INVARIANT_VIOLATED；未知 execute 异常经 serializeError 映射 INTERNAL_ERROR，禁止 PROBE_FAILED。</change>
+      <remaining>此前 exact-approved Gate 已消费且只产生失败结果；内部 provider request/retry 仍 UNKNOWN，没有航班结构/事实证据。重试必须重新生成 fresh zero-call preview 并取得新 exact approval；生产 SRC_FLIGHT、Claim、route/UI 仍关闭。</remaining>
+    </version>
+
+    <version number="1.1.47" date="2026-09-02" scope="FLYAI PHASE A LOCAL FOUNDATION">
+      <summary>完成 FlyAI 本地个人研究参考的依赖、加密凭据、UtilityProcess runner、独立 Gate 与打包路径基础；没有启动或调用 FlyAI。</summary>
+      <evidence level="LOCAL">284/284 自动测试、format/lint、Node/Web typecheck、production build、build:unpack 与 packaged path-only smoke 通过；externalCalls=0、cliProcessAttempts=0、credentialReads=0、productionAllowlistMutations=0。</evidence>
+      <change type="依赖">精确固定 @fly-ai/flyai-cli@1.0.16、registry integrity、bin/engine/dependencies 与 bundle SHA-256；安装阶段无 lifecycle scripts。</change>
+      <change type="安全边界">FLYAI 使用既有 safeStorage 通道；Main-only UtilityProcess 固定单进程、隔离 env、15 秒/1 MiB/8 KiB 上限与确定退出；独立 Gate 先消费再读凭据或 fork，只保留去值化结构摘要。</change>
+      <change type="供应链风险">固定 bundle 含供应方内置 fallback credential 与 x-ff-ctx 处理；应用强制显式用户凭据覆盖并在缺凭据时 fork 前 fail closed，具体值不进入仓库或文档。</change>
+      <remaining>未生成 workspace Gate preview、未读取真实 Key、未发 provider 请求；生产 SRC_FLIGHT、Evidence/Claim/RouteLeg、路线/UI 均关闭。RollingGo Flight 下线维护，VariFlight R-1/R-2/R-3 只作不可迁移的历史诊断证据，人工航班路径保留。</remaining>
+    </version>
+
+    <version number="1.1.46" date="2026-09-01" scope="VARIFLIGHT AUTHORITY CEILING AND PRODUCT FALLBACK">
+      <summary>确认没有更多字段权威，生产自动接入继续 blocked。</summary>
+      <evidence level="LOCAL">复核安装附件并同步 authority matrix；providerExternalCalls=0、toolCallAttempts=0、productionAllowlistMutations=0。</evidence>
+      <change type="OQ-VF-004">现有可用资料仅为官方 Aviation MCP 页面与 reference-only 安装附件。</change>
+      <change type="端点冲突">旧 ModelScope SSE 与当前官方 ai.variflight.com streamable HTTP 不一致，既有 Gate 证据不可跨端点复用。</change>
+      <remaining>OQ-VF-005 选择 M0 人工航班证据或 raw-only 诊断；Phase D 实现、生产合同/注册/route/UI 均未授权。</remaining>
+    </version>
+
+    <version number="1.1.45" date="2026-09-01" scope="VARIFLIGHT OFFICIAL PAGE AUTHORITY REVIEW">
+      <summary>核验用户提供的官方 Aviation MCP 页面，并将生产语义缺口继续 fail closed。</summary>
+      <evidence level="LOCAL" sourceType="OFFICIAL_DOC_READ_ONLY">官方页面读取 1；新增 authority matrix，providerExternalCalls=0、toolCallAttempts=0、productionAllowlistMutations=0。</evidence>
+      <change type="OQ-VF-003">页面证明 getFlightPriceByCities 用途、必填输入、IATA/日期格式和工具失败文本。</change>
+      <change type="阻塞">页面不含返回字段定义；code、时间、金额/币种、库存、stop/share 与 freshness 继续 BLOCKED。</change>
+      <remaining>等待更细官方字段资料或另行授权更广的官方来源只读检索；Phase D 实现、生产合同/注册/route/UI 均未授权。</remaining>
+    </version>
+
+    <version number="1.1.44" date="2026-09-01" scope="VARIFLIGHT AUTHORITY-FIRST DECISION">
+      <summary>OQ-VF-002 选择 authority-first，官方语义成为生产合同硬前置。</summary>
+      <evidence level="LOCAL">仅更新规划/控制文档；externalCalls=0、toolCallAttempts=0、productionAllowlistMutations=0。</evidence>
+      <change type="下一选择">OQ-VF-003 等待用户提供官方资料，或授权 Kimi WebBridge 官方来源只读检索。</change>
+      <remaining>未联网、未实现 Phase D、未注册 SRC_FLIGHT、未接入路线/UI。</remaining>
+    </version>
+
+    <version number="1.1.43" date="2026-09-01" scope="VARIFLIGHT PHASE D SEMANTIC AUTHORITY PROPOSAL">
+      <summary>起草非执行 Phase D 提案，以权威字段定义作为生产合同前置。</summary>
+      <evidence level="LOCAL">只更新规划/控制文档；externalCalls=0、toolCallAttempts=0、productionAllowlistMutations=0。</evidence>
+      <change type="OQ-VF-002">比较 authority-first、更多样本与 raw-only registration；后两者不能单独证明业务含义，推荐先取得官方定义。</change>
+      <remaining>等待用户选择证据路径；Phase D 实现、官方只读检索、生产合同/注册/route/UI 均未授权。</remaining>
+    </version>
+
+    <version number="1.1.42" date="2026-09-01" scope="VARIFLIGHT GATE R-3 LIVE FORMAT CONSISTENCY DIAGNOSTIC">
+      <summary>fresh exact Gate R-3 消费一次，完成值无关的格式/一致性诊断。</summary>
+      <evidence level="LIVE_FORMAT_AND_CONSISTENCY_ONLY">connect/list/call/close=1/1/1/1、retry=0、resultSchema=VALID；只保留路径/布尔/枚举/计数，raw/value/产品持久化/生产注册写入均为 0。</evidence>
+      <change type="证据结论">请求绑定与日期格式/关系一致；planned time 单位/时区、币种、金额单位、起价、库存、stop/share 与 code 映射仍 UNPROVEN。</change>
+      <remaining>生产结果契约、SRC_FLIGHT 注册、Claim/RouteLeg、路线/UI 与任何新 Gate 均需另行审定；已消费 Gate 不可重放。</remaining>
+    </version>
+
+    <version number="1.1.41" date="2026-09-01" scope="VARIFLIGHT GATE R-3 ZERO-CALL PREVIEW">
+      <summary>经单独授权生成 fresh Gate R-3 preview；只建立本地 exact-approval artifact，未执行 provider。</summary>
+      <evidence level="LOCAL">previewExternalCalls=0、toolCallAttempts=0、productionAllowlistMutations=0；状态 AWAITING_EXACT_APPROVAL，无 lock/consumed marker。</evidence>
+      <change type="当前 Gate">固定 JHG→CAN、2026-09-17、一次 connect/list/call/close、retry=0、15 秒预算与 value-free retention；有效期至 2026-09-01T13:21:35.072Z。</change>
+      <remaining>执行需当前 fresh planId/digest/operationId 的 exact approval；生产注册、值语义、路线/UI 仍未授权。</remaining>
+    </version>
+
+    <version number="1.1.40" date="2026-09-01" scope="VARIFLIGHT GATE R-3 CLASSIFIER AND GUARD LOCAL">
+      <summary>完成获批的 Gate R-3 去值化分类器、独立 one-shot Gate 与 ToolRegistry-bound LOCAL runner；未生成 preview。</summary>
+      <evidence level="LOCAL">focused R-3 20/20、全量 263/263、format、lint、Node/Web typecheck 与 production build 通过；externalCalls=0、toolCallAttempts=0。</evidence>
+      <change type="证据上限">只输出固定路径、布尔、枚举和计数，分类限定 FORMAT_AND_CONSISTENCY_ONLY / UNPROVEN；时间单位/时区、币种、费用、库存、stop/share 与 code 映射不推断。</change>
+      <remaining>gate-r3-preview.json 尚未生成；生产 allowlist/tools/probeTool 仍为空。fresh preview、exact-approved 单次执行、生产契约、路线/UI 均需后续独立授权。</remaining>
+    </version>
+
+    <version number="1.1.39" date="2026-09-01" scope="VARIFLIGHT PRE-CONTRACT RUNNER FAILURE MATRIX LOCAL">
+      <summary>补齐 Gate R-2 专用 runner 的 tool-error、timeout、close 与零持久化回归。</summary>
+      <evidence level="LOCAL">runner 7/7、全量 243/243、format、lint、Node/Web typecheck 与 production build 通过；externalCalls=0。</evidence>
+      <change type="安全失败">显式 tool error 不泄露正文且 health 不变；timeout 固定 call=1/retry=0/close=1 并消费 authorization；close failure 归类 MCP_PROTOCOL_ERROR。三者均不写 audit/Evidence。</change>
+      <remaining>生产 allowlist/tools/probeTool 仍为空；值语义、生产 health/audit/degradation、Claim、路线/UI 与下一 Gate 均待单独授权。</remaining>
+    </version>
+
+    <version number="1.1.38" date="2026-09-01" scope="VARIFLIGHT PHASE C STRUCTURE CONTRACT LOCAL">
+      <summary>基于 Gate R-2 去值化结构摘要完成 strict envelope/raw/normalized Schema 与 synthetic fixture。</summary>
+      <evidence level="LOCAL">4/4 focused、241/241 全量、format、lint、Node/Web typecheck 与 production build 通过；本轮 externalCalls=0。</evidence>
+      <change type="证据约束">raw 顶层固定且 unknown/type drift fail closed；数组成员 required 未被摘要证明，故只限制已观测键和类型。strict envelope 只接受一个 text block；normalized 保留 Raw 语义并把未证明的时间、费用、币种、经停与 RouteLeg 派生字段置 null。</change>
+      <remaining>Gate R-2 的值级 contractStatus 仍 UNPROVEN；生产 allowlist/tools/probeTool 为空，未形成航班事实、Evidence、audit、路线/UI。后续值语义 Gate 与生产注册需另行授权。</remaining>
+    </version>
+
+    <version number="1.1.37" date="2026-09-01" scope="VARIFLIGHT GATE R-2 LIVE STRUCTURE PROBE">
+      <summary>fresh exact Gate R-2 消费一次，完成 getFlightPriceByCities 的 LIVE structure-only 探针。</summary>
+      <evidence level="LIVE_STRUCTURE_ONLY">connect/list/call/close 各 1、retry=0、errorCode=null；只保留 JSON path/type/arrayLength，raw retention=0，Gate/sidecar CONSUMED 且无 lock。</evidence>
+      <change type="返回形状">顶层观测为 code/data/message/request_id/timestamp；data 为对象数组，cabins 可为空或为对象数组，并观测到航班、机场、计划时间、经停及舱位字段名/标量类型。</change>
+      <remaining>resultSchema=NOT_RUN、contractStatus=UNPROVEN；未验收任何字段值或航班事实，生产 allowlist/tools 仍为空。严格结果 Schema、LOCAL fixture、路线/UI、提交、推送和部署仍未完成或未授权。</remaining>
+    </version>
+
+    <version number="1.1.36" date="2026-09-01" scope="VARIFLIGHT GATE R-2 RUNNER LOCAL">
+      <summary>完成 ToolRegistry-bound Gate R-2 one-shot result-shape runner 与 exact-tuple execute CLI；本轮不生成或执行 Gate。</summary>
+      <evidence level="LOCAL">focused 29/29、全量 237/237、format、lint、Node/Web typecheck 与 production build 通过；fake session 验证单次 connect/list/call/close、失败不可重放、raw retention=0。</evidence>
+      <change type="执行边界">authorization 先消费；固定工具/参数/预算、零 retry、descriptor schema fail-closed，只输出去值化 JSON 结构摘要。诊断 allowlist 不修改生产 SRC_FLIGHT allowlist/tools/probeTool，也不写 audit/Evidence/cache/health。</change>
+      <remaining>工作区 Gate R-2 尚未生成或执行；返回 Schema、航班事实、生产注册、路线/UI、提交、推送和部署仍未完成或未授权。下一步需 fresh zero-call preview 与 exact approval。</remaining>
+    </version>
+
+    <version number="1.1.35" date="2026-09-01" scope="VARIFLIGHT PHASE B INPUT AND GATE R-2 LOCAL">
+      <summary>冻结 getFlightPriceByCities 严格输入，并实现 Gate R-2 零调用 preview 与磁盘/内存双层 one-shot 护栏。</summary>
+      <evidence level="LOCAL">focused R-1+R-2 23/23、全量 233/233、format、lint、Node/Web typecheck 与 production build 通过；externalCalls=0、VariFlight toolCallAttempts=0、production allowlist mutations=0。</evidence>
+      <change type="输入与授权边界">大写三字 IATA、有效日期、strict object；plan digest 绑定 endpoint/input contract/args/一次未来 call/零 retry/结构摘要，当前不安装 execute 入口。</change>
+      <remaining>生产 SRC_FLIGHT allowlist/tools 仍为空；返回 envelope/raw/normalized Schema、Gate R-2 LIVE、Evidence/路线/UI、提交、推送和部署均未完成或未授权。</remaining>
+    </version>
+
+    <version number="1.1.34" date="2026-09-01" scope="VARIFLIGHT GATE R-1 LIVE DESCRIPTOR DISCOVERY">
+      <summary>VariFlight legacy SSE Gate R-1 经精确批准后消费一次；真实 tools/list 成功返回 9 个有界 descriptor，未调用任何工具。</summary>
+      <evidence level="LIVE" scope="descriptor-only">connect=1、tools/list=1、close=1，toolCallAttempts=0、retryCount=0、raw retention=0；Gate artifact 与 operation sidecar 均为 CONSUMED。</evidence>
+      <change type="候选生产契约">`getFlightPriceByCities(dep_city, arr_city, dep_date)` 是唯一明确提供逐航班/逐舱位结构化价格的候选工具；生产 allowlist/tools 在 Gate R-2 返回结构验证前继续为空。</change>
+      <remaining>未验证任何航班结果、价格、库存或返回 Schema；Phase B LOCAL、Gate R-2、路线集成、UI、真实行程与安装器仍未完成，已消费 Gate 不可重放。</remaining>
+    </version>
+
+    <version number="1.1.33" date="2026-09-01" scope="VARIFLIGHT MCP PHASE A LOCAL">
+      <summary>VariFlight 获批成为广州→云南试点的 M0 受控航班来源；完成 legacy SSE 与零工具调用 discovery 的 LOCAL 就绪。</summary>
+      <evidence level="LOCAL">210/210 自动测试、format、lint、Node/Web typecheck、production build、XML 与 Trellis 校验均已通过。externalCalls=0、toolCallAttempts=0、modelCalls=0。</evidence>
+      <change type="来源边界">新增 SRC_FLIGHT source/health 占位，生产 allowlist、tools 与 Evidence 支持保持为空；人工航班入口保留，附件示例和携程截图均不冒充实源。</change>
+      <change type="传输与诊断">新增 Main 内 legacy SSE 会话、显式 connect deadline、本地协议夹具及 ToolRegistry descriptor-only discovery；不做 streamable-http fallback，不建立第二条工具调用路径。</change>
+      <remaining>真实 connect/tools-list 需新的 Gate R-1；工具/返回 Schema、Evidence/DB migration、三路线集成、UI 与一次查询 Gate R-2 尚未实施。</remaining>
+    </version>
+
+    <version number="1.1.32" date="2026-09-01" scope="RAIL ERROR ENVELOPE LIVE REVALIDATION">
+      <summary>固定 Rail Error 文本信封修复完成一次精确授权的 LIVE 复验：已知工具失败由 MCP_TOOL_ERROR 安全分类，不再误报 SOURCE_DRIFT。</summary>
+      <evidence level="LIVE" result="partial-success">19 项计划实际调用 12 次：9 成功、3 MCP_TOOL_ERROR；随后 7 项按 health 契约本地 SOURCE_ADAPTER_DEGRADED。tool_calls 8→20、Evidence 4→10、model_calls=0、retry=0。</evidence>
+      <change type="真实兼容验证">第 4 个西双版纳→广州以及第 11/12 个经昆明返程查询均作为 MCP_TOOL_ERROR 处理；没有原始正文、SOURCE_DRIFT、重试、fallback 或模型修复。前九个成功项中的新增事实使三条路线的内部交通均有证据。</change>
+      <change type="路线结果">BALANCED、LOW_TRANSIT、RELAXED 均只剩西双版纳→广州一条关键返程腿未核验；三条仍可比较但 recommended=0、selectedRouteId=null、stage=STAGE_2。现有严格人工 flight/coach 入口可零 Rail 调用补证。</change>
+      <remaining>本次 planId/digest/operationId 已消费不可重试。真实行程尚未形成可推荐/可选择路线；安装/卸载、日历导入及后续阶段仍未验收。</remaining>
+    </version>
+
+    <version number="1.1.31" date="2026-09-01" scope="RAIL MCP ERROR TEXT ENVELOPE LOCAL">
+      <summary>修复固定 `12306-mcp@0.3.10` 将已知工具失败作为标准 text envelope 内 `Error:` 文本返回、却被产品误判为 JSON SOURCE_DRIFT 的契约缺口。</summary>
+      <evidence level="LOCAL">定向 5/5 与全量 207/207 自动测试、format、lint、双端 typecheck、production build、Electron default/no-gpu 路线 smoke 均通过；两种 smoke 的 externalCalls、modelCalls、irreversibleActions 均为 0，独立只读审查无 finding。</evidence>
+      <change type="Rail 专用归一化">仅 Rail 标准 text envelope 的首段文本在 trimStart 后精确以 `Error:` 开头时归一为 isError=true；显式 isError 跳过业务 payload 解析，由既有 ToolRegistry 输出不含正文的 MCP_TOOL_ERROR。合法 tickets JSON 仍严格验证。</change>
+      <change type="拒绝与安全边界">非 Error 的非法/不兼容 JSON、空或 non-text content、structuredContent-only 继续 SOURCE_DRIFT；其他来源、IPC、事件、migration、路线算法、timeout、retry 与依赖均未改变，错误正文不进入日志、审计或持久化。</change>
+      <remaining>本版不证明此前第四次 LIVE 调用的原始正文，也不构成修复后的真实 Rail 验收。已消费 Gate R 不得复用；任何 LIVE 复验必须另行生成新零调用 preview/digest 并取得新的精确批准。</remaining>
+    </version>
+
+    <version number="1.1.30" date="2026-09-01" scope="NEXT-017 MULTI-CITY RAIL SESSION LOCAL">
+      <summary>修复多城市路线在每个计划项重复冷启动 Rail 且把 15 秒单工具预算误用于 initialize 的产品缺陷。</summary>
+      <evidence level="LOCAL">受控 19 项批次证明 session/connect/list/close 各一次、call/audit/progress 各 19 次；setup、schema drift、degraded 与 cancel 边界通过。202/202 自动测试、format、lint、双端 typecheck、production build、Electron default/no-gpu 路线 smoke 均通过，三项调用计数为 0。</evidence>
+      <change type="生命周期与预算">一次已消费路线计划只创建一个临时 Rail session；connect/initialize=60 秒一次，listTools=15 秒一次，最多 24 个 get-tickets 各 15 秒按冻结顺序串行，retry=0，所有结束路径 await close。</change>
+      <change type="审计与降级">每次实际 callTool 独立写脱敏 ToolCallAudit；setup 失败审计为 0，schema drift/来源降级/取消后停止后续外部调用并按原顺序生成本地有界结果。IPC、共享 schema、migration、依赖、路线算法和 UI 契约未变。</change>
+      <remaining>当前 build 的旧 Gate R 已消费且不可重试；真实 Rail 仍需当前 build 的新零调用 preview/digest 与新的精确批准。安装/卸载与 ICS 人工验收仍未执行。</remaining>
+    </version>
+
+    <version number="1.1.29" date="2026-08-31" scope="YUNNAN ROUTE-CORE MANUAL TRANSPORT RECOVERY LOCAL">
+      <summary>云南 route core 已分离城际 gateway 与精确集合点，并新增受控人工 flight/coach 证据入口，使 blocked 路线可在用户确认后零调用重算。</summary>
+      <evidence level="LOCAL">197/197 自动测试、format、lint、双端 typecheck、production build、migrations 0001–0010 fresh SQLite JSONL 回放、Renderer SSR 与 managed-host --no-sandbox/--disable-gpu Electron fake-session smoke 通过；标准 sandbox renderer/GPU 仍在页面加载前 -1073741515/ERR_FAILED，未计为通过。</evidence>
+      <change type="契约与原子性">Main 从 current route/leg 派生 endpoint/date/ROUTE_GOAL_LEG scope/duration，生成 deterministic USER_RESEARCH / VERIFIED_BY_USER Claim 与单个 V2 event；重复事实零写，旧 ROUTE_NODE/legacy events 保持兼容，无 migration 0011。</change>
+      <change type="UI 与安全">gateway 必填、place 可选；人工表单端点/日期只读、显式确认并按 session/route/leg 隔离。URL 不访问，ToolRegistry/ProviderRuntime/source health/model/retry 不触发。</change>
+      <remaining>NEXT-017 真实 session 尚未填写人工研究/交通事实或选择路线；真实来源、模型、安装器、部署与提交未执行，externalCalls=0、modelCalls=0、irreversibleActions=0。</remaining>
+    </version>
+
+    <version number="1.1.28" date="2026-08-31" scope="YUNNAN UNIFIED D6/D7 LOCAL">
+      <summary>广州→云南 10 天试点已从 route-D5 继续贯通到同一 continuous TimelineVersion、route-scoped tasks/GATE_C 与整程 ICS/Markdown。</summary>
+      <evidence level="LOCAL">191/191 自动测试、format、lint、双端 typecheck、production build、migration 0001–0010 与导出秘密扫描通过；统一 Electron default/no-gpu 在页面加载前因宿主 GPU 进程退出 -1073741515/ERR_FAILED，未计为交互通过。</evidence>
+      <change type="契约与持久化">Timeline、Task 与 Gate 以可选 route context 保持 route/node/segment/leg 身份；migration 0010 只扩展 disposable SQLite 投影，旧 JSONL 和 legacy D6/D7 不回写。</change>
+      <change type="编译与界面">普通日、transfer day、同日多腿、checkout/check-in、10/30 分钟缓冲、每日 BACKUP、MUST 锚、任务、scoped blocker 与整程导出已接入；Renderer 提供 stale response 隔离和 820/320 窄屏规则。</change>
+      <remaining>真实 Rail/Map/Hotel/Search/XHS/天气/闭园、模型、真实旅行、安装/卸载、日历导入、签名、部署与提交均未执行，externalCalls=0、modelCalls=0、irreversibleActions=0。</remaining>
+    </version>
+
+    <version number="1.1.27" date="2026-08-31" scope="YUNNAN MULTI-SEGMENT D5 LOCAL">
+      <summary>广州→云南 10 天选中路线已从逐节点研究继续贯通到 route-scoped 多段 D5，不再要求用户拆 session 拼接交通与住宿。</summary>
+      <evidence level="LOCAL">187/187 自动测试、format、lint、双端 typecheck、production build、route-D5 SSR、migration 0001–0009、XML/Trellis 与脱敏/残留扫描通过；Electron default/no-gpu 在页面加载前因宿主 GPU 进程退出 -1073741515/ERR_FAILED，未计为通过。</evidence>
+      <change type="契约与持久化">新增 leg/stay/route scope、MultiSegmentD5Snapshot、七类 V2 事件与 migration 0009；旧单城市 D5 事件、IPC 和投影不迁移、不回写。</change>
+      <change type="执行与界面">每个 Rail/Map/Hotel 最小单元具有零调用 preview、一次性 digest、retry=0 与完整身份过滤；人工航班/大巴缺 Claim 时显式阻塞。Renderer 展示有序 leg/stay、日骨架、局部 patch 与最终 Gate。</change>
+      <remaining>unified D6/D7 尚未实施；真实 Rail/Map/Hotel/Search/XHS、模型、安装器、部署与提交均未执行，externalCalls=0、modelCalls=0、irreversibleActions=0。</remaining>
+    </version>
+
+    <version number="1.1.26" date="2026-08-31" scope="YUNNAN NODE-SCOPED D4 LOCAL">
+      <summary>选中云南多城市路线的 D4 研究已按 routeId+nodeId 隔离；Travel Agent 逐节点研究并在最终 required 节点确认后原子推进。</summary>
+      <evidence level="LOCAL">177/177 自动测试、format、lint、双端 typecheck、production build、SSR smoke、migration 0001–0008 与 foreign-key 校验通过；Electron default/no-gpu smoke 在页面加载前因宿主 GPU 进程退出 -1073741515/ERR_FAILED，未计为通过。</evidence>
+      <change type="契约与数据">新增 ROUTE_NODE Evidence scope、节点状态/事件、migration 0008 及事务投影；历史无 scope D4 与旧 0001–0007 fixture 继续可读。</change>
+      <change type="流程与界面">标准/XHS/manual/paste、Claim、冲突、处置与 Gate 共用选中 route/node 所有权；大理/丽江/西双版纳 MUST_GO 精确映射，昆明允许 SKIPPED；Renderer 提供严格隔离的有序节点队列。</change>
+      <remaining>multi-segment D5 与 unified D6/D7 尚未实施；真实 Search/XHS/Map/Rail/Hotel、模型、安装器、部署和提交均未执行，externalCalls=0、modelCalls=0、irreversibleActions=0。</remaining>
+    </version>
+
+    <version number="1.1.25" date="2026-08-30" scope="D4 FORMAL MANUAL RESEARCH">
+      <summary>D4 正式人工研究输入完成 LOCAL 平行路径；逐项用户核验可形成可回放清单，自动 XHS 严格路径不降级。</summary>
+      <evidence level="LOCAL">157 项自动测试、format、lint、双端 typecheck、production build、default/no-gpu Electron smoke、XML parse 与 Trellis validate 通过；externalCalls=0、modelCalls=0、irreversibleActions=0。</evidence>
+      <change type="证据与持久化">新增 USER_RESEARCH / VERIFIED_BY_USER、migration 0006、严格人工清单 IPC 与单个 research/checklist-prepared V2 原子事件；USER_PASTE 仍为 UNVERIFIED 可选线索。</change>
+      <change type="确认与 Gate">来源名称必填、安全 HTTPS URL 可选；每个研究项独立确认，MUST_GO 三类硬锚点独立记录 checkedAt，过期或非 KNOWN 锚点不解除 Gate。</change>
+      <change type="UI 与隐私">未提交草稿只在 Renderer 内存，提交后明确显示“用户核验”而非独立佐证；通用日志、progress、Inspector 与错误 IPC 不包含正文、URL 或 Evidence 原值。</change>
+      <remaining>真实 session 尚未填写或确认人工事实；NEXT-017 的 STAGE-3→STAGE-4、Stage A/B、安装/卸载与日历导入仍需单独验收。第四份 XHS LIVE 超时与四份 digest 不可复用边界不变。</remaining>
+    </version>
+
+    <version number="1.1.24" date="2026-08-30" scope="NEXT-017 XHS TIMEOUT DIAGNOSIS">
+      <summary>第四份 D4 首个 search_feeds 的 60 秒超时完成零调用根因分类，未扩大真实调用或容器变更。</summary>
+      <evidence level="LOCAL">ToolRegistry 阶段计时、LIVE allowlist 审计、伴随容器状态与失败窗口日志、上游官方 search.go 及 issues #610/#685/#801 交叉核验；本轮 XHS/model/irreversible calls 均为 0。</evidence>
+      <change type="根因分类">故障域收敛为上游 Rod 浏览器搜索等待/页面契约不稳定；connect、listTools、schema 解析与本机 OOM 不支持为本次主因。安全证据不足以断言具体 DOM 等待点。</change>
+      <change type="防复发约束">连接、工具发现、登录与搜索能力分离；禁止盲目加时、自动重试、静默删筛选、缩减样本或把探针藏入 preflight。相关 D4、性能、错误与日志规格已同步。</change>
+      <remaining>等待用户选择伴随镜像版本/DOM 兼容评估或正式人工研究输入路径；四份 digest 不可复用，任何容器变更或第五份 LIVE 仍需新批准。</remaining>
+    </version>
+
+    <version number="1.1.23" date="2026-08-30" scope="NEXT-017 D4 LIVE ATTEMPT">
+      <summary>第四份 D4 XHS 一次性计划经精确批准执行；首个 search_feeds 超时并按零重试规则停止。</summary>
+      <evidence level="LIVE" result="failed">operationId=58634b24-baeb-4cdc-b745-200ee6035d43；新增 allowlist 审计为 search_feeds、durationMs=60021、errorCode=MCP_TIMEOUT。tool_calls 2→3，model_calls=0、事件=5、STAGE_3/实体/排序不变。</evidence>
+      <change type="执行边界">后续 3 search、30 detail、6 EXTRACTION 与 1 REVIEW 均未执行；无重试、无 partial Claim、无状态推进。Electron/CDP 和临时脚本已清理，用户既有 XHS 容器未停止。</change>
+      <remaining>本次失败未进入 schema drift 分支，因此没有新的结构指纹，真实 XHS envelope 仍未知。四份 digest 均已消费；任何诊断或重跑需新的 preview/digest 与精确批准。</remaining>
+    </version>
+
+    <version number="1.1.22" date="2026-08-30" scope="D4 XHS DIAGNOSTIC">
+      <summary>D4 XHS 单 session 漂移路径增加零调用、有界且无值的结构诊断，完成 LOCAL 收口。</summary>
+      <evidence level="LOCAL">34/34 XHS 定向、144/144 全量、format、lint、双端 typecheck、production build、D4 Electron no-gpu smoke、XML parse 与 Trellis validate 通过；externalCalls=0、modelCalls=0、irreversibleActions=0。</evidence>
+      <change type="诊断与安全">只在既有 search_feeds/get_feed_detail schema drift 分支把结构指纹写入日志 allowlist keys；深度、节点、对象键数与总长度有界，疑似动态 ID/高熵键占位，遍历异常收敛为固定无值标记。</change>
+      <change type="兼容">保留 missing、立即降级、Evidence STALE、SOURCE_DRIFT、零重试、零 partial Claim 与事件/状态不推进；不新增 session、探针、调用、IPC、数据库、审计或 UI。</change>
+      <remaining>真实 XHS envelope 仍未知；三份历史 digest 已消费且不可复用，NEXT-017 继续前必须生成全新 preview/digest 并重新取得精确批准。</remaining>
+    </version>
+
+    <version number="1.1.21" date="2026-08-30" scope="D4 XHS RANKING">
+      <summary>D4 小红书 30 帖严格研究、七次 no-repair 模型处理与确定性景点排序完成 LOCAL 收口。</summary>
+      <evidence level="LOCAL">format、lint、双端 typecheck、135/135 自动测试、production build、D4/D5 renderer 与 Electron no-gpu smoke 通过；4+30、15/15、首个详情失败零重试、6+1、别名/歧义、原子事件回放与 UI 有直接测试，externalCalls=0、modelCalls=0、irreversibleActions=0。</evidence>
+      <change type="契约">新增零调用 preview/一次性 digest execute，四固定 query、统一 filters、30 条正文详情、零重试/回退/repair；旧双路研究路径保持兼容。</change>
+      <change type="排序与事件">以 3R−4A+fit 排序，避雷不自动删除；checklist V2 可选保存 summary/rankings/final Claims，并以单事件原子投影。</change>
+      <remaining>真实 XHS 34 次来源读取与 7 次模型调用均未执行；需按当前 session/provider/model/digest 重新批准，安装器与真实旅行仍未验收。</remaining>
+    </version>
+
+    <version number="1.1.20" date="2026-08-30" scope="STAGE-2/3 FIX">
+      <summary>固定目的地会话现在通过显式 UI/IPC 确认从 STAGE-2 进入 STAGE-3，完成 LOCAL 收口。</summary>
+      <evidence level="LOCAL">format、lint、双端 typecheck、126/126 自动测试、production build、D4/D5 renderer 与 Electron no-gpu smoke 通过；externalCalls=0、modelCalls=0、irreversibleActions=0。</evidence>
+      <change type="确认通路">新增严格 `destination:confirm-fixed` 请求、Coordinator 门禁与 CHAT 按钮；固定城市不再需要伪造候选，也不会自动推进。</change>
+      <change type="兼容与安全">`stage/confirmed` 只增加可选固定目的地 confirmation；旧 V1/V2 回放、模糊候选路径、sender/visible-session/错误包装保持并直接测试。</change>
+      <remaining>NEXT-017 仍为 open；正式 STAGE-3→STAGE-4 还需当前授权外的 D4 Search/XHS/研究模型，Stage A/B 未生成或执行，安装器与真实旅行也不属于本次 LOCAL 修复。</remaining>
+    </version>
+
+    <version number="1.1.19" date="2026-08-29" scope="BUILD-D7">
+      <summary>BUILD-D7 任务中心、GATE_C、导出、Inspector 与 Windows x64 artifact 完成 LOCAL 收口。</summary>
+      <evidence level="LOCAL">format、lint、双端 typecheck、115/115 自动测试、production build、renderer/Electron no-gpu smoke、export/package 审计、fresh-userData packaged smoke 与 build:win 通过；externalCalls=0、modelCalls=0、irreversibleActions=0。</evidence>
+      <change type="任务与 Gate">SKILL-11 只从 current timeline/Claims 派生任务；用户回填以单事件生成 vN+1 与 DecisionLog；GATE_C 点名 HIGH 任务、handover 与硬锚点证据缺口。</change>
+      <change type="导出与 Inspector">ICS/Markdown/诊断使用 allowlist DTO、秘密扫描与原子写盘；Inspector 按 session/time/limit 展示 event/tool/model/blocked/health 安全摘要。</change>
+      <change type="迁移与打包">新增 0005 task links；JSONL 重建任务/vN+1/Gate 通过。app.asar 改为正向白名单并生成 x64 NSIS，禁入路径与凭据形态值均为 0。</change>
+      <remaining>安装器未执行且未签名；真实来源刷新与真实下一趟旅行未运行，R0 exitCriteria 尚未达成。</remaining>
+    </version>
+
+    <version number="1.1.18" date="2026-08-29" scope="BUILD-D6">
+      <summary>BUILD-D6 路线精排、分钟级时间轴、版本恢复与 TIMELINE 视图完成本地实现。</summary>
+      <evidence level="LOCAL">format、lint、双端 typecheck、105/105 自动测试、生产构建与 Electron no-gpu smoke 通过；四日夹具覆盖 10/30 分钟缓冲、BACKUP 折叠、两次发布、旧版本只读、未核验硬锚点阻塞、取消无 partial、快照/JSONL 恢复，externalCalls=0。</evidence>
+      <change type="事件与读模型">完整 timeline/published 事件原子投影到 timeline_versions、timeline_items 与 decision_logs；版本连续递增且仅一个 current，每次发布写版本化快照。</change>
+      <change type="边界">D6 默认只消费已落盘 EvidenceClaim；Renderer 不接触来源工具、凭据、数据库或原始正文。</change>
+      <remaining>真实 Map ETA 与餐厅营业/绕路结果尚未 LIVE 验收；需新的参数级精确授权，不得由本地通过推定。</remaining>
+    </version>
+
+    <version number="1.1.17" date="2026-08-29" scope="BUILD-D5">
+      <summary>同一 Coordinator 会话的 Stage A→Stage B 连续 LIVE 验收完成，NEXT-015 关闭，BUILD-D5 收口。</summary>
+      <evidence level="LIVE">get-tickets×2、maps_geo×4、maps_distance×4、searchHotels×1 共 11 条真实工具审计全部成功，零重试；同一 session 产生 railJourney×2、groundTransfer×4、lodgingCandidate×5 与 transport/candidates-prepared。</evidence>
+      <change type="隐私与清理">精确地址只发送给高德一次 geocode；隔离目录逐文件扫描命中 0，原始响应未保留，退出后无残留查询进程。</change>
+      <change type="脚本误报">全部产品调用完成后，临时脚本错误要求本地 Rail 物化写额外工具审计而以 INTERNAL_INVARIANT_VIOLATED 退出；产品契约明确本地物化不再次查询、不写审计，离线 SQLite/JSONL 证据覆盖该事后误报。</change>
+      <remaining>BUILD-D6 任务仍为 planning；需先审阅最终规划摘要并取得新的明确实现批准，且该批准不授权真实外部调用。</remaining>
+    </version>
+
+    <version number="1.1.16" date="2026-08-29" scope="BUILD-D5">
+      <summary>Stage A 与 Stage B 已分别完成真实来源验收，严格同进程端到端连续性仍待验证。</summary>
+      <evidence level="LIVE">固定离线 Stage A 两次 get-tickets 均成功并选择 G1974/G239；隔离 Stage B 随后串行完成 maps_geo×4、maps_distance×4、searchHotels×1，9/9 外部调用成功，零重试，酒店候选数 5，生成 railJourney×2 与 groundTransfer×4。</evidence>
+      <change type="隐私与清理">Stage B 的 2 次 Rail 工具审计为本地重建，不计外部调用；精确地址和原始响应均未持久化，退出后无残留查询进程。</change>
+      <remaining>两阶段不在同一进程/会话，Stage B 未直接消费同一运行中 Stage A 的选择；BUILD-D5 保持 in_progress，NEXT-015 仍需新的完整连续验收授权。</remaining>
+    </version>
+
+    <version number="1.1.15" date="2026-08-29" scope="BUILD-D5">
+      <summary>Rail pre-call 非 AppError 已按阶段安全归一化，并由真实本地 stdio 产品路径回归覆盖。</summary>
+      <change type="错误分类">配置/凭据与来源状态失败映射 INTERNAL_SERVICE_NOT_READY，session 构造与普通工具调用失败映射 SOURCE_UNREACHABLE，connect/listTools 普通失败映射 MCP_PROTOCOL_ERROR，注册失败映射 INTERNAL_SERVICE_NOT_READY；不新增公开错误码或 diagnostic。</change>
+      <change type="生命周期与审计">普通调用错误与 audit 错误码一致；close 失败安全映射且不覆盖已有主错误。单 session、两次串行调用、零重试、失败前 audit=0 与出程失败 audit=1 的契约保持。</change>
+      <evidence level="LOCAL">Coordinator + 本地 stdio fixture 记录 initialize=1、list=1、call=2、audit=2 并确认子进程关闭；format、lint、双端 typecheck、97 项自动测试、生产构建和 Electron no-gpu smoke 通过，externalCalls=0。</evidence>
+      <remaining>v1.1.14 的 LIVE 失败未被本地结果覆盖；Stage A 仍需新的参数级授权，Stage B 仍未授权。</remaining>
+    </version>
+
+    <version number="1.1.14" date="2026-08-29" scope="BUILD-D5">
+      <summary>最新固定离线 Coordinator Stage A 在 get-tickets 前返回 INTERNAL_ERROR，暴露安全诊断缺口。</summary>
+      <attempt level="LIVE" status="pre-call-internal-error">授权参数为 2026-09-08 上海→成都、2026-09-11 成都→上海；callAttempts=0、retryCount=0、无 raw retention、无 Rail Claim，也未产生白名单 connect diagnostic。</attempt>
+      <remaining>先用受控本地夹具定位 pre-call 非 AppError 泄漏并补齐安全分类；修复通过 LOCAL 门禁后，Stage A 与 Stage B 仍分别需要新的精确授权。</remaining>
+    </version>
+
+    <version number="1.1.13" date="2026-08-29" scope="BUILD-D5">
+      <summary>Rail 生产启动固定离线，并补齐 connect 安全分类与确定性进程回收。</summary>
+      <change type="运行时">固定使用 npx(.cmd) --offline -y 12306-mcp@0.3.10；缓存预灌为硬前置，无 registry 在线 fallback。</change>
+      <change type="诊断">缓存缺失、spawn、提前退出、无效协议、initialize 超时与未知失败只形成白名单类别；公开 AppError 与 IPC schema 不扩张，stderr、命令、路径和环境不保留。</change>
+      <change type="生命周期">失败连接等待同一幂等 close 完成，受控夹具无残留子进程；Stage A 单 session、60/15 秒预算、无重试、零连接审计与零 Rail Claim 不变。</change>
+      <evidence level="LOCAL">format、lint、双端 typecheck、88 项自动测试、生产构建及 Electron no-gpu smoke 通过；smoke externalCalls=0。</evidence>
+      <remaining>未启动真实 12306-mcp；历史协议错误不能被追溯归因。需取得新的 Stage A 参数级授权验证固定离线路径，Stage B 仍单独授权。</remaining>
+    </version>
+
+    <version number="1.1.12" date="2026-08-29" scope="BUILD-D5">
+      <summary>修复 Coordinator Stage A 的 Rail MCP 冷启动超时，不改变两阶段授权与 IPC 契约。</summary>
+      <change type="生命周期">一次授权使用一个按需临时 Rail session：connect/initialize 为 60 秒，listTools 与两次串行 get-tickets 各为 15 秒；任何阶段均不重试，结束、失败或取消后关闭。</change>
+      <change type="安全边界">连接/发现失败为 0 条工具审计；每个实际调用分别审计。allowlist、Schema drift、来源健康、取消、start_train_code、候选上限和 Stage A 零 Rail Claim 保持。</change>
+      <change type="兼容">旧 Rail 单工具路径与 Map/Hotel/Search/XHS 路径不变；无 IPC、Renderer、数据库、依赖、来源版本或启动预热变更。</change>
+      <evidence level="LOCAL">format、lint、双端 typecheck、80 项自动测试、生产构建与 Electron no-gpu smoke 通过；smoke externalCalls=0。</evidence>
+      <attempt level="LIVE" status="connect-protocol-error">新授权的实际 Coordinator Stage A 在 Rail connect 阶段返回 MCP_PROTOCOL_ERROR；尚未进入 listTools/get-tickets，两次查询均为 0 调用，无重试、无 raw retention、无 Rail Claim 或残留进程。</attempt>
+      <remaining>需先诊断真实 Rail MCP 连接协议故障，再取得新的 Stage A 参数级授权；Stage B 仍不得执行。</remaining>
+    </version>
+
+    <version number="1.1.11" date="2026-08-29" scope="BUILD-D5">
+      <summary>以两阶段、单次授权的系统装配替代 Renderer 手工来源 JSON。</summary>
+      <change type="来源装配">Stage A 从已确认城市/日期查询两次 Rail 候选并由用户选车；Stage B 从所选车次、瞬时精确地址、Stay Segment 与成人计数派生 geocode、四段接驳和 Hotel 查询。</change>
+      <change type="安全边界">执行 IPC 只携带 planId/digest；精确地址不进入响应、Evidence、JSONL、SQLite 或审计。operationId 单次消费，交通 Claim 原子写入，失败不留 partial Claims。</change>
+      <change type="兼容">旧 sourceParameters 入口保留，并统一为单次授权与交通 Claim 原子落盘。</change>
+      <evidence level="LOCAL">格式、lint、typecheck、70 项自动测试、生产构建与 Electron no-gpu smoke 通过；smoke externalCalls=0。</evidence>
+      <attempt level="LIVE" status="failed">经精确授权，Stage A 出程 Rail get-tickets 调用一次后因 SOURCE_DRIFT 失败；返程未调用，无重试、无 raw retention、无 partial Claim。</attempt>
+      <attempt level="LIVE" status="source-valid">新授权的 2026-09-08 出程与 2026-09-11 返程各调用一次，resultSchema=VALID，候选数 15/17，无重试与 raw retention。</attempt>
+      <change type="适配器修复" evidence="LOCAL">start_train_code/train_no 语义映射已在产品代码修正；71 项自动测试、构建与 externalCalls=0 smoke 通过。</change>
+      <attempt level="LIVE" status="connect-timeout">实际 Coordinator Stage A 的授权摘要匹配，但 Rail MCP 在连接/工具发现阶段 MCP_TIMEOUT；get-tickets callAttempts=0，返程未进入，无重试、无 raw retention、无 Rail Claim。</attempt>
+      <remaining>BUILD-D5 保持 in_progress；须先修复 Rail MCP 冷启动/工具发现超时，再分别授权实际 Coordinator Stage A 与 Stage B。</remaining>
+    </version>
+
+    <version number="1.1.10" date="2026-08-29" scope="记录订正">
+      <summary>修复会误导新会话路由的进度记录不一致，并建立根目录三份开发控制文件。零功能变更。</summary>
+      <scopeDiscipline enforcement="hard">只订正记录与补充索引，不新增产品能力，不改动任何 tier、FR、NFR 或 AC 条目。</scopeDiscipline>
+      <change type="纠错" severity="high">suggestedResumePrompt 原指示从最早的 not_started 一天继续，而最早的 not_started 是 BUILD-D0，会把新会话误导去重做环境前置。改为优先接续 in_progress。</change>
+      <change type="纠错" severity="high">D5 task.json 的 notes 仍写"等待开工审批"、meta 为空，与 1.1.7–1.1.9 记录的实现及实际代码产物矛盾。已改写并按 D3 先例登记分级验收状态。</change>
+      <change type="纠错">BUILD-D0 completionState 补正为 complete；BUILD-D2 由 completed 统一为 complete；新增 completionState 受控词表，固定四值。</change>
+      <change type="新增">新增 ROADMAP.xml、CHANGELOG.xml、PROGRESS.xml。现有根目录 Markdown 不转格式——.trellis/spec/ 下 11 个文件有 12 处按节号引用，转换会使其静默失效。</change>
+      <change type="方法纪律">判断进度须交叉验证 task.json、PRD changeLog 与代码产物三处，冲突时以产物的客观存在为准。task.json 的 notes/meta 与 .trellis/.runtime/sessions 的 last_seen_at 均会滞后。</change>
+      <evidence level="LOCAL">未执行任何实源调用，未改动任何源码逻辑。</evidence>
+      <remaining>BUILD-D5 保持 in_progress，剩余 NEXT-015 端到端真实会话验收。</remaining>
+    </version>
+
+    <version number="1.1.9" date="2026-08-29" scope="BUILD-D5">
+      <summary>补齐 BUILD-D5 从 SKELETON 严格参数到 ToolRegistry Claim 物化的 Coordinator/IPC 本地链路。</summary>
+      <change type="跨层契约">transport:prepare 可选接收两条 Rail 选择与四段 Map 接驳参数；stay:prepare 可选接收 Hotel 查询参数。载荷由共享 Zod 校验，sourceId/toolName 不由 Renderer 提供。</change>
+      <change type="失败边界">交通来源按固定顺序、单次、无 fallback 物化；证据不完整时不追加 transport/candidates-prepared。酒店来源失败投影为 FAILED/CANCELLED 与手工替代，不由搜索或用户粘贴冒充酒店源。</change>
+      <change type="兼容">未传 sourceParameters 时继续消费既有 Claim，旧 IPC 与 fake smoke 保持兼容。</change>
+      <evidence level="LOCAL">只运行本地夹具与 externalCalls=0 门禁，未再次调用任何实源。</evidence>
+      <remaining>BUILD-D5 保持 in_progress，只剩一套固定真实行程参数的端到端会话验收；该调用包需要新的精确授权。</remaining>
+    </version>
+
+    <version number="1.1.8" date="2026-08-29" scope="BUILD-D5">
+      <summary>冻结 BUILD-D5 的 Rail/Map/Hotel 实源读取契约并补齐 EvidenceClaim 规范化入口。</summary>
+      <change type="实源契约">Rail get-tickets 与 Hotel searchHotels 的最小 schema 经各一次实源结构诊断直接验证；Map maps_distance 先取 results[].distance/duration 结构，再按高德官方米/秒语义冻结并以第二次调用验证。三源均为 resultSchema=VALID。</change>
+      <change type="规范化边界">ToolRegistry 新增 railJourney、groundTransfer 与 lodgingCandidate 一次性物化入口；地图费用、酒店全住期总价、房型、人数与取消政策缺失时保持 null/UNKNOWN，最低单价不乘住宿夜数。</change>
+      <evidence level="LIVE">所有获批调用固定一次且无重试；结构诊断不写 Evidence、cache、工具审计或 source-health，不保留原始响应。</evidence>
+      <remaining>Coordinator/IPC 尚未收集完整真实行程所需的往返车次、四段接驳与住宿参数（由 1.1.9 补齐）。</remaining>
+    </version>
+
+    <version number="1.1.7" date="2026-08-27" scope="BUILD-D5">
+      <summary>同步 BUILD-D5 本地实现：门到门交通、抵离锚点、半日骨架、局部重算、单住宿段与三来源住宿比较。</summary>
+      <change type="事件与投影">新增交通候选/选择、骨架更新、住宿候选/选择的 version-2 事件，以及 0004 transport_candidates 读模型；JSONL 仍是权威事实源。</change>
+      <change type="确定性规划">铁路往返按首段接驳、候车、城际、末段接驳四段计算；半日项目按坐标聚类并强制两两不超过 8 km，抵达/离开锚点固定为 HARD_LOCKED。</change>
+      <change type="住宿透明度">SRC-HOTEL、SRC-SEARCH、USER-PASTE 候选保持来源、contentIdentity、verificationStatus、整段总价、人数与取消三态；空来源单独显示，手工粘贴保持 UNVERIFIED。</change>
+      <evidence level="LOCAL">本地类型、lint、测试、构建、JSONL 重放、静态 Renderer 与隔离 Electron no-gpu smoke 均不访问外部来源。</evidence>
+    </version>
+
+    <version number="1.1.6" date="2026-08-27" scope="BUILD-D4">
+      <summary>为 BUILD-D4 增加小红书正向地点与"避雷 + 地点"双路 UGC 交叉验证。</summary>
+      <change type="来源与权限">新增 SRC-XHS、可选 XIAOHONGSHU_MCP_AUTH 与固定 http://127.0.0.1:18060/mcp 连接；只注册 check_login_status、search_feeds、get_feed_detail，所有发布、评论、互动、Cookie 与登录写路径都拒绝。</change>
+      <change type="有界研究">每个目的地串行执行一次正向词与一次避雷词，每路最多 10 条来源、补 2 条详情、每条 4000 字符，不加载完整评论、不重试或 fallback；xsec_token 只作瞬时详情参数。</change>
+      <change type="证据边界">持久化无凭据 canonical URL，所有笔记默认 INDEPENDENT_UGC + UNVERIFIED。</change>
+      <evidence level="LOCAL">62 项自动测试、格式、lint、Node/Web typecheck、生产构建与 Electron fake-session smoke 通过且 externalCalls=0；未下载、启动、登录伴随程序或执行真实小红书查询。</evidence>
+    </version>
+
+    <version number="1.1.5" date="2026-08-26" scope="BUILD-D4">
+      <summary>同步 BUILD-D4 研究与目的地情报的本地实现。</summary>
+      <change type="事件与读模型">新增目的地候选/选择、研究清单、disposition、冲突裁决与研究确认的 version-2 SessionEvent；TravelState 的 D4 字段可从 JSONL 重建。</change>
+      <change type="研究治理">Source Subagent 只接收冻结的最小只读任务并经 ToolRegistry 串行调用；逐源失败显式展示且无重试、换源或 fallback。ResearchEntity 归并不改写不删除原始 EvidenceClaim。</change>
+      <change type="Verification Gate">推广唯一支撑、必去项身份不明、缺少开放/预约硬锚点与未解决冲突均以 GATE_BLOCKED 阻止确认；冲突双方保持 CONFLICTED，不伪造来源一致。</change>
+      <evidence level="LOCAL">标记为 implemented_local。未执行新的真实目的地 Serper、DeepSeek 或地图查询。</evidence>
+    </version>
+
+    <version number="1.1.4" date="2026-08-26" scope="BUILD-D3">
+      <summary>将尚未完成实源验收的 Brave Search 适配器替换为 Serper Search。</summary>
+      <change type="搜索契约">Serper 固定 POST https://google.serper.dev/search、X-API-KEY 与只含 q 的 JSON 正文；只接受 organic 数组中最多 10 条有效、去重 HTTPS 结果。</change>
+      <change type="凭据与兼容">新增 SERPER_SEARCH safeStorage 凭据槽作为 SRC_SEARCH 唯一搜索凭据；BRAVE_SEARCH 仅保留在枚举中读取旧 version-1 凭据文件，不再路由或展示。</change>
+      <change type="生成与审计">DeepSeek 固定 deepseek-v4-flash、stream=true、无 web_search/open_page、无重试或 fallback；nativeWebSearchCalls=0、nativeOpenPageCalls=0、openPageTokens=0 强校验。</change>
+      <evidence level="LIVE" date="2026-08-26">经精确授权，固定查询完成一次 Serper Search + DeepSeek 流式实源验收；callAttempts=1、无重试、无错误、未保留原始响应，退出后无 Search MCP 残留进程。BUILD-D3 因此闭环。</evidence>
+    </version>
+
+    <version number="1.1.3" date="2026-08-25" scope="SRC-SEARCH">
+      <summary>修正 SRC-SEARCH 的黑盒引用限制：改为结构化完整结果与流式生成的两段式只读链路。</summary>
+      <change type="可见性">新增 source:progress 加法 IPC，按 operationId 推送搜索开始、完整来源、答案增量与 usage。</change>
+      <change type="凭据与门禁">Search 同时需要搜索与生成两侧凭据，缺任一项均在 transport 前失败关闭。</change>
+      <evidence level="LOCAL">仅完成本地实现与离线验证，未调用实源。该链路随后由 1.1.4 替换为 Serper。</evidence>
+    </version>
+
+    <version number="1.1.2" date="2026-08-24" scope="ROUTER-001">
+      <summary>主进程内轻量模型网关：四角色显式渠道路由，并关闭 OQ-023。</summary>
+      <change type="模型路由">ROUTER-001 从 D2 初版单 Provider 更新为 version-2 channels + roles；只允许 DEEPSEEK_OFFICIAL 与 SHUAI_API，四角色分别显式选择渠道和模型。</change>
+      <change type="安全边界">模型网关仅存在于 Electron 主进程，固定 Chat Completions 最小请求，不监听端口、不自动重试、fallback、选模或选分组。</change>
+      <change type="兼容">Provider version-1 文件继续可读可调用且读取不改写；只有用户主动保存才原子写入 version 2。</change>
+      <evidence level="LOCAL">format、lint、Node/Web typecheck、39 项测试、生产构建与默认渲染 Electron smoke 通过；externalCalls=0。</evidence>
+    </version>
+
+    <version number="1.1.1" date="2026-08-22" scope="BUILD-D1">
+      <summary>BUILD-D1 开工前契约纠错，并完成 D1。</summary>
+      <change type="纠错">NFR-017 改为 Electron 39.8.10 实际提供的 encryptString / decryptString；D1-D6 禁止升级 Electron。</change>
+      <change type="纠错">Cordis 3.18.1 无 Context.dispose()，根生命周期用 root.stop() 且不等待异步 disposer；退出前必须由 AppKernel.stop() 显式 await MCP/JSONL 清理并关闭 SQLite。</change>
+      <change type="纠错">包版本钉定：@cordisjs/timer@0.3.2、@modelcontextprotocol/client@2.0.0、better-sqlite3@13.0.3、12306-mcp@0.3.10。</change>
+      <change type="安全收敛">ToolRegistry 仅允许已有本地 Zod 参数 schema 的工具调用；MCP SDK 固定 shell:false；凭据 IPC 绑定唯一主窗口 sender。</change>
+      <evidence level="LIVE" date="2026-08-22">八个 Cordis 服务、JSONL 事实源、SQLite 读模型、SETTINGS 凭据三态与单一 12306 stdio 通道完成；真实公共日期返回夹具已落盘。</evidence>
+    </version>
+
+    <version number="1.1.0" date="2026-08-21" scope="全文">
+      <summary>外部文档核验轮。净效果是范围收缩，未引入任何新的产品能力。</summary>
+      <scopeDiscipline enforcement="hard">只许纠错和做减法，不许提新功能。后续版本若要新增能力，必须先明确削减等量的 M0 范围。</scopeDiscipline>
+      <change type="纠错">cordisContract 钉定 cordis@3.18.1。最严重一处：cordis@4 已删除 dispose 事件，同样的析构代码在 v4 上既不报错也永不触发，会静默泄漏包括 MCP 子进程在内的全部资源。</change>
+      <change type="减法">SRC-FLIGHT 由 M0 降级为 M1，仓库已 404 且端点被删除，schema 无法验证。M0 机票改走用户手工粘贴通道。</change>
+      <change type="纠错">SRC-MAP 的"官方 SSE 端点"错误，高德已于 2026-03-17 下线，改为 streamable-http；搜索类三工具共享 5000 次每月、QPS 上限 3、未实名认证配额为零。实名认证前置到 D0。</change>
+      <change type="纠错">SRC-RAIL 新增 high 级结构性风险：靠正则匹配 12306 首页 HTML 构建车站索引，页面一变即初始化失败。</change>
+      <change type="新增安全边界">MCP-ALLOWLIST 补充：唤端类工具按非只读处理一律拒绝注册。</change>
+      <change type="新增">新增 NFR-029 串行限速、NFR-030 配额缓存与熔断、NFR-031 Electron 工程七条硬约束。</change>
+      <change type="新增">新增 BUILD-D0 挂机日与 BUILD-PARALLEL 并行编排节；MCP 通道由四条减为一条，打包验证移出 D1。</change>
+    </version>
+
+    <version number="1.0.0" date="2026-08-21" scope="全文">
+      <summary>确立 M0/M1/M2 三级实施分层，并以 MCP 数据层替代自建平台抓取。</summary>
+      <change type="新增">新增 realityCheck、m0ScenarioEnvelope、cordisContract、sevenDayBuildPlan 与 descopeOrder。</change>
+      <change type="删除">删除 BROWSER-001 专用旅行浏览器工作区整个支柱，含五小时登录态、按域授权、Cookie 隔离与截图脱敏。</change>
+      <change type="替换">以 12306-mcp、RollingGo 酒店、高德 MCP 及通用搜索替代 v0.7 的自建平台 SourceAdapter；新增 MCP-ALLOWLIST 与 MCP-HEALTH。</change>
+      <change type="决议">OQ-016：导出包不含凭据，换机重录，不做凭据迁移。</change>
+      <change type="决议">OQ-019：超出 M0-ENVELOPE 时不硬性拒绝，改为出具方案对比由用户决定。</change>
+      <change type="决议">OQ-020：住宿候选不设主备来源，SRC-HOTEL、SRC-SEARCH 与手工粘贴三条并存且地位平等。</change>
+      <change type="治理">验收清单收敛为 AC-M0-01 至 AC-M0-35，逐条映射到七天计划中的具体某一天。</change>
+    </version>
+
+  </versions>
+
+</changelog>

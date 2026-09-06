@@ -1,0 +1,12 @@
+{
+  "name": "xiaohongshu-mcp",
+  "version": "2.5.0",
+  "commit": "6583124dfda92312b6bc19a042a6acfae63fe498",
+  "platform": "windows",
+  "arch": "x64",
+  "file": "xiaohongshu-mcp-windows-amd64.exe",
+  "size": 15601664,
+  "sha256": "3578c9fcf3e7be0b79564aeceef8c4f38e0072d9357ca1f911ee14cd37bd454c",
+  "source": "https://github.com/xpzouying/xiaohongshu-mcp/releases/tag/v2.5.0",
+  "browserVersion": "148.0.7778.215"
+}

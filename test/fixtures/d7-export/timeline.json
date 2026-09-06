@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "items": [
+    {
+      "itemId": "item-day",
+      "date": "2026-09-10",
+      "startTime": "10:00",
+      "endTime": "12:00",
+      "crossesMidnight": false,
+      "itemClass": "FIXED"
+    },
+    {
+      "itemId": "item-night",
+      "date": "2026-09-10",
+      "startTime": "23:30",
+      "endTime": "01:00",
+      "crossesMidnight": true,
+      "itemClass": "FIXED"
+    },
+    {
+      "itemId": "item-backup",
+      "date": "2026-09-10",
+      "startTime": "18:00",
+      "endTime": "18:00",
+      "crossesMidnight": false,
+      "itemClass": "BACKUP"
+    }
+  ]
+}
