@@ -31,7 +31,17 @@ if not exist "mcp-servers\deepseek-web-search\.venv\Scripts\deepseek-web-search-
   echo.
 )
 
-echo Starting Travel Agent...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\stop-existing-travel-agent-dev.ps1" -ProjectRoot "%~dp0."
+if errorlevel 1 (
+  echo [ERROR] The previous Travel Agent development instance could not be stopped safely.
+  pause
+  exit /b 1
+)
+
+echo Starting Travel Agent from current source...
+echo [INFO] Project: %CD%
+echo [INFO] UI: electron-vite development renderer
+echo.
 call npm run dev
 set "START_EXIT_CODE=%ERRORLEVEL%"
 

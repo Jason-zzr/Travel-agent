@@ -68,6 +68,13 @@ npm install
 Push-Location mcp-servers/deepseek-web-search
 uv sync --frozen
 Pop-Location
+```
+
+Windows 本地开发推荐双击根目录的 `start-travel-agent.bat`。启动器会先关闭仅属于当前项目的旧 `electron-vite dev` 进程树，再从当前源码启动，避免重复实例占用 5173/5174 端口后继续显示旧窗口。它不会清理数据库、用户数据，也不会调用外部数据源。
+
+也可以在确认旧开发实例已经退出后手动运行：
+
+```powershell
 npm run dev
 ```
 
