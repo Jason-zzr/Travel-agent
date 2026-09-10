@@ -323,16 +323,8 @@ app
       const tabs = await window.webContents.executeJavaScript(
         "[...document.querySelectorAll('.view-switch button')].map((button) => button.textContent)"
       )
-      assert.deepEqual(tabs, [
-        'CHAT',
-        'SKELETON',
-        'TIMELINE',
-        'TASKS',
-        'EVIDENCE',
-        'INSPECTOR',
-        'SETTINGS'
-      ])
-      for (const tab of ['EVIDENCE', 'INSPECTOR', 'SETTINGS']) {
+      assert.deepEqual(tabs, ['规划', '路线骨架', '行程', '待办', '证据', '运行记录', '设置'])
+      for (const tab of ['证据', '运行记录', '设置']) {
         await window.webContents.executeJavaScript(
           `([...document.querySelectorAll('.view-switch button')].find((button) => button.textContent === '${tab}')).click()`
         )
@@ -346,7 +338,7 @@ app
         assert.match(
           body,
           new RegExp(
-            tab === 'EVIDENCE' ? 'EvidenceClaim' : tab === 'INSPECTOR' ? '被拦截工具' : '只读数据源'
+            tab === '证据' ? 'EvidenceClaim' : tab === '运行记录' ? '被拦截工具' : '只读数据源'
           )
         )
       }
@@ -467,7 +459,7 @@ app
       )
       assert.equal(xhsCancelRequests, 1)
       await window.webContents.executeJavaScript(
-        `([...document.querySelectorAll('.view-switch button')].find((button) => button.textContent === 'EVIDENCE')).click()`
+        `([...document.querySelectorAll('.view-switch button')].find((button) => button.textContent === '证据')).click()`
       )
       await window.webContents.executeJavaScript(`(() => {
         const selects = document.querySelectorAll('.query-form select')
@@ -503,7 +495,7 @@ app
       assert.match(searchOutput.text, /0 次 \/ 0 token/)
       assert.deepEqual(searchOutput.sourceLinks, ['https://example.gov.cn/chengdu'])
       await window.webContents.executeJavaScript(
-        `([...document.querySelectorAll('.view-switch button')].find((button) => button.textContent === 'SETTINGS')).click()`
+        `([...document.querySelectorAll('.view-switch button')].find((button) => button.textContent === '设置')).click()`
       )
       await window.webContents.executeJavaScript(
         'new Promise((resolve) => setTimeout(resolve, 100))'
@@ -511,7 +503,7 @@ app
       const captureView = await window.webContents.executeJavaScript(
         "document.querySelector('.view-switch button.active')?.textContent"
       )
-      assert.equal(captureView, 'SETTINGS')
+      assert.equal(captureView, '设置')
       assert.deepEqual(rendererConsoleErrors, [])
       const artifactDir = path.join(process.cwd(), 'test', 'artifacts')
       fs.mkdirSync(artifactDir, { recursive: true })
@@ -536,7 +528,7 @@ app
         capture: { width: captureSize.width, height: captureSize.height, bytes: png.byteLength },
         tabs,
         captureView,
-        checkedViews: ['EVIDENCE', 'INSPECTOR', 'SETTINGS'],
+        checkedViews: ['证据', '运行记录', '设置'],
         checkedSettings: {
           credentialInput: true,
           providerRouteSave: true,

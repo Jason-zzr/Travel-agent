@@ -7,7 +7,7 @@
         单看任何一处都可能得出错误结论——本文件 v1.0 就因只读 task.json 而误判过 D5。
 -->
 <progress id="travel-harness-progress" version="1.1.59" language="zh-CN"
-  lastUpdatedDate="2026-09-05" compiledBy="交叉核对 .trellis/tasks、PRD v1.1.59、XHS-first route-node 控制契约、LOCAL 316 项测试、Electron default/no-gpu smoke、bundled XHS sidecar/package verifier、SRC_FLIGHT 空生产白名单、SQLite migration 仍为 0001–0010">
+  lastUpdatedDate="2026-09-10" compiledBy="交叉核对 .trellis/tasks、PRD v1.1.59、XHS-first route-node 控制契约、LOCAL 316 项测试、Electron default/no-gpu smoke、bundled XHS sidecar/package verifier、SRC_FLIGHT 空生产白名单、SQLite migration 仍为 0001–0010">
 
   <ownership>
     <responsibility>最近状态、完成声明、阻塞与交接证据。</responsibility>
@@ -27,7 +27,14 @@
   </authority>
 
   <!-- ============ 当前状态 ============ -->
-  <currentState asOf="2026-09-05">
+  <currentState asOf="2026-09-10">
+    <completedTask id="09-04-fix-electron-ui-smoke-renderer-start" status="completed" evidenceLevel="LOCAL"
+      path=".trellis/tasks/archive/2026-09/09-04-fix-electron-ui-smoke-renderer-start" completedAt="2026-09-10">
+      <title>Electron smoke 中文导航回归与验收收口</title>
+      <phase>当前源码复验先发现 D3 smoke 仍期待英文 View 标签而失败；修复七项中文导航与证据/运行记录/设置点击选择器后，default/no-gpu 均通过，electronSandbox=true、rendererConsoleErrors=0、externalCalls=0。318/318 回归、format/lint 与双端 typecheck/build 通过。既有非 Git 仓库归档阻塞已失效，恢复并收口此任务。</phase>
+      <evidence>test/artifacts/d3-ui-smoke.json 与 d3-ui-smoke.no-gpu.json；两份截图均为 1458×947、307313 bytes；Settings fixture 验证保存失败恢复、角色配置、搜索流及 QR/status/cancel。截图读取工具受外层沙箱故障阻断，本轮未完成人工视觉复核。</evidence>
+      <notClaimed>default smoke 同样关闭硬件加速，不证明硬件加速路径；未启动真实 XHS、下载 Chromium、扫码、读取真实研究内容、调用模型或执行安装器。M0/R0 仍为 in_progress。</notClaimed>
+    </completedTask>
     <activeTask id="09-04-bundled-xhs-mcp-sidecar" status="in_progress" evidenceLevel="LOCAL"
       path=".trellis/tasks/09-04-bundled-xhs-mcp-sidecar" parent="08-30-next-017-r0-real-trip-manual-install-acceptance">
       <title>内置小红书 MCP Sidecar</title>

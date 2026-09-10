@@ -35,3 +35,21 @@
 ## Sources
 
 `ARCHITECTURE.md` §§2, 5–8; `ERROR_HANDLING.md` §§1–2, 5; `PERFORMANCE.md` §§1, 4–6; `TODO.md` §5.
+
+## Navigation smoke regression (2026-09-10)
+
+`test/electron/d3-ui-smoke.mjs` asserts the visible navigation labels independently:
+规划 / 路线骨架 / 行程 / 待办 / 证据 / 运行记录 / 设置.
+A copy change must update both the expected labels and click selectors; do not import
+production labels into expected test data, since that would hide a broken label mapping.
+The internal View identifiers remain CHAT / SKELETON / TIMELINE / TASKS / EVIDENCE /
+INSPECTOR / SETTINGS. Localized labels do not rename IPC or stored domain values.
+
+Run `npm.cmd run build` to completion before running tests or Electron smoke;
+FlyAI utility fixtures read build output and can fail if it is being rewritten.
+Then run `npm.cmd run smoke:d3-ui` and `npm.cmd run smoke:d3-ui:no-gpu` outside an
+incompatible outer automation sandbox while retaining Electron sandbox=true,
+contextIsolation=true and nodeIntegration=false. Both modes must verify evidence,
+inspector, settings, fixture QR/status/cancel, zero renderer errors and externalCalls=0.
+The default smoke currently disables hardware acceleration too; its pass proves the
+default smoke configuration, not accelerated GPU rendering or real XHS login.

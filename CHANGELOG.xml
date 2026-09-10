@@ -5,7 +5,7 @@
   纪律：本文件是 PRD changeLog 的可导航摘要，不是第二份权威源。
         每条只记"这一版决定了什么、边界是什么"，细节回 PRD 同版本节点。
 -->
-<changelog id="travel-harness-changelog" language="zh-CN" lastUpdatedDate="2026-09-05">
+<changelog id="travel-harness-changelog" language="zh-CN" lastUpdatedDate="2026-09-10">
 
   <ownership>
     <responsibility>版本沉淀与历史变更摘要，按版本倒序。</responsibility>
@@ -30,6 +30,11 @@
     <rule enforcement="hard">LOCAL 通过不得表述为 LIVE 验收。每次 LIVE 调用需绑定来源、工具、查询、凭据、用途与一次尝试的新授权。</rule>
   </evidenceLevels>
 
+  <maintenance date="2026-09-10" baseline="1.1.59" evidenceLevel="LOCAL">
+    <summary>修复 D3 Electron smoke 与已落地中文导航的断言漂移；不改变 PRD 需求或产品行为。</summary>
+    <validation>default/no-gpu smoke、318/318 tests、format/lint、双端 typecheck/build 通过；保持 Electron sandbox 和 externalCalls=0。</validation>
+    <remaining>XHS 首次准备/登录、节点研究、人工安装与日历验收仍待独立门禁；未把 LOCAL 通过升级为 LIVE。</remaining>
+  </maintenance>
   <versions>
 
     <version number="1.1.59" date="2026-09-05" scope="ROUTE-NODE XHS-FIRST REQUIREMENT">

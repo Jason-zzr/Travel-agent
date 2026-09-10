@@ -2,7 +2,7 @@
 
 **职责**：可执行的验收检查步骤（§4）与每天收工清单（§5）。当前状态、完成声明与阻塞见 `PROGRESS.xml`；版本历史见 `CHANGELOG.xml`；路线与砍量见 `ROADMAP.xml`。
 
-最后更新：2026-09-05
+最后更新：2026-09-10
 
 ---
 
@@ -30,7 +30,14 @@
 
 父任务 **云南多城市路线推荐** 的 LOCAL 子交付、FlyAI Phase C、独立 D7 package verifier 修复与 bundled XHS MCP sidecar 均已完成 LOCAL 实现；用户已选择 `route_4d9299ab9458e5c2246e4329`，真实 session 停在 STAGE_3。v1.1.59 起，required node 的默认事实获取改为 Travel Agent 使用 XHS_STRICT，用户逐节点批准一次性计划并从带来源、时效、状态与不确定性的结果中选择。既有大理/洱海人工事实仍是 `VERIFIED_BY_USER`，不得改称 MCP 已验证；后续节点需要新 preview/digest。开放时间、闭园与预约等硬事实还需独立 allowlisted 标准/官方来源，否则保持 UNKNOWN/BLOCKED；人工研究仅在自动路径失败或不足后由用户显式选择。
 
-> 当前自动测试为 316/316，format、lint、双端 typecheck、Electron default/no-gpu smoke、`build:win` 与 D7 package verifier 均通过；两种 smoke 均保持 `electronSandbox=true`、`rendererConsoleErrors=0`、`externalCalls=0`。当前 installer 为 109714739 bytes、SHA-256 `a58f2309d2a0f99588ab80d6de0142062fe7f87ba3ee5072e7115f51bcaa189c`、`NotSigned`、未执行。本轮没有启动真实 XHS binary、下载 Chromium、扫码、内容查询或模型调用，不能冒充 LIVE 验收。
+> 2026-09-05 历史验收快照（不代表本轮重跑安装包）：自动测试为 316/316，format、lint、双端 typecheck、Electron default/no-gpu smoke、`build:win` 与 D7 package verifier 均通过；两种 smoke 均保持 `electronSandbox=true`、`rendererConsoleErrors=0`、`externalCalls=0`。当前 installer 为 109714739 bytes、SHA-256 `a58f2309d2a0f99588ab80d6de0142062fe7f87ba3ee5072e7115f51bcaa189c`、`NotSigned`、未执行。本轮没有启动真实 XHS binary、下载 Chromium、扫码、内容查询或模型调用，不能冒充 LIVE 验收。
+
+
+#### 2026-09-10 当前源码复验
+
+当前 318/318 tests、format/lint、双端 typecheck/build 通过。D3 Electron smoke 已修复中文导航断言漂移；default/no-gpu 均验证七视图、证据/运行记录/设置、模拟 XHS 二维码→状态→取消、rendererConsoleErrors=0 和 externalCalls=0。default smoke 也关闭硬件加速，不能据此宣称硬件加速路径通过。构建必须完成后再运行测试，避免 FlyAI fixture 读取正在重写的 out/。
+
+下一步仍为 bundled XHS 的独立首次准备/登录验收，随后才是当前 required node 的新 XHS_STRICT preview 与精确批准；登录批准不含内容查询。人工安装/卸载和日历导入仍由用户完成。抖音任务已由用户取消，不进入实施。
 
 #### Route-node XHS 主路径门禁
 
